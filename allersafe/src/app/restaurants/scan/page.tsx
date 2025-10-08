@@ -3,16 +3,31 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CameraCapture } from '@/components/scan/CameraCapture'
+import { getAllergyNames } from '@/lib/allergyProfile'
 
 export default function RestaurantsScanPage() {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const handleImageCapture = async (imageData: string) => {
+  const handleImageCapture = async (s3Url: string) => {
     setIsProcessing(true)
 
+    // Get allergy profile data as array
+    const allergyProfile = getAllergyNames()
+
+    // Console log the data for backend processing
+    console.log('=== RESTAURANT SCAN DATA ===')
+    console.log({
+      s3_image_url: s3Url,
+      allergy_profile: allergyProfile
+    })
+    console.log('============================')
+
+    // TODO: Send S3 URL and allergy profile to backend API for processing
+
+    // Simulate processing time
     setTimeout(() => {
-      router.push(`/restaurants/map?cuisine=${encodeURIComponent('italian')}`)
+      router.push(`/restaurants/map?imageUrl=${encodeURIComponent(s3Url)}`)
     }, 2000)
   }
 

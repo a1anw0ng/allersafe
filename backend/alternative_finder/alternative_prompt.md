@@ -12,9 +12,8 @@ Return ONLY a valid JSON array with up to 5 alternative products:
 ```json
 [
   {{
-    "alternative_name": "specific product name",
+    "alternative_name": "specific product name with brand",
     "company": "manufacturer name",
-    "purchase_links": ["direct URL to purchase", "second URL if available"],
     "price": "$X.XX USD",
     "warning_level": "Safe or Caution",
     "tags": ["allergen-free", "dietary tags", "max 3 tags"]
@@ -40,11 +39,10 @@ Return ONLY a valid JSON array with up to 5 alternative products:
 
 1. **Identify Product Category**: Determine what type of product this is (snack, beverage, meal, etc.)
 
-2. **Search for Alternatives**: Use web search to find:
+2. **Search for Alternatives**: Find:
    - Products in the same category that are free from user's allergens
    - Popular allergen-free brands for this product type
-   - Current prices from major retailers (Amazon, Walmart, Target, Whole Foods)
-   - Direct purchase links (not just brand websites)
+   - Typical price ranges from major retailers (Amazon, Walmart, Target, Whole Foods)
 
 3. **Verify Safety**: For each alternative:
    - Confirm it doesn't contain any of the user's allergens
@@ -76,8 +74,8 @@ For someone allergic to **gluten** looking at bread:
 
 - Return EXACTLY 5 alternatives (or fewer if not enough safe options exist)
 - List SAFE products first, then CAUTION products
-- Include real, purchasable products with actual prices
-- Provide working purchase links from major retailers
+- Include real, purchasable products with estimated prices
+- Include full product name with brand (e.g., "Oatly Oat Milk Original" not just "Oat Milk")
 - All prices in USD
 - Keep tags concise (2-3 words each)
 - Focus on widely available alternatives that can be purchased online

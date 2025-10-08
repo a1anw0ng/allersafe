@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ProductCard } from '@/components/products/ProductCard'
 import { useState, useEffect } from 'react'
 
@@ -59,23 +59,46 @@ const mockAlternatives: Alternative[] = [
 
 export default function AlternativesPage() {
   const router = useRouter()
-  const [restrictions, setRestrictions] = useState<string[]>([])
+  const searchParams = useSearchParams()
+
+  const [severity, setSeverity] = useState<string>('Safe')
+  const [allergensDetected, setAllergensDetected] = useState<string[]>([])
+  const [warnings, setWarnings] = useState<string>('')
+  const [hasError, setHasError] = useState(false)
   const [filteredAlternatives, setFilteredAlternatives] = useState<Alternative[]>(
     mockAlternatives.filter(alt => alt.safetyRating === 'safe')
   )
 
   useEffect(() => {
-    const saved = localStorage.getItem('dietaryRestrictions')
-    if (saved) {
-      const restrictions = JSON.parse(saved)
-      setRestrictions(restrictions)
+    // Read URL params
+    const severityParam = searchParams.get('severity')
+    const allergensParam = searchParams.get('allergensDetected')
+    const warningsParam = searchParams.get('warnings')
+    const errorParam = searchParams.get('error')
+
+    if (errorParam === 'true') {
+      setHasError(true)
+      return
     }
 
+    if (severityParam) setSeverity(severityParam)
+    if (warningsParam) setWarnings(warningsParam)
+
+    if (allergensParam) {
+      try {
+        const parsed = JSON.parse(allergensParam)
+        setAllergensDetected(Array.isArray(parsed) ? parsed : [])
+      } catch {
+        setAllergensDetected([])
+      }
+    }
+
+    // Filter alternatives based on severity
     const filtered = mockAlternatives.filter(alt => {
       return alt.safetyRating === 'safe'
     })
     setFilteredAlternatives(filtered)
-  }, [])
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -94,17 +117,66 @@ export default function AlternativesPage() {
       </div>
 
       <div className="px-4 py-6">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-red-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div>
-              <p className="text-red-800 font-medium">Contains: Peanuts</p>
-              <p className="text-red-700 text-sm mt-1">This product contains allergens from your profile</p>
+        {hasError ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-red-800 font-medium">Analysis Error</p>
+                <p className="text-red-700 text-sm mt-1">Failed to analyze product. Please try again.</p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : severity === 'Safe' ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-green-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-green-800 font-medium">✓ Safe to consume</p>
+                <p className="text-green-700 text-sm mt-1">No allergens detected from your profile</p>
+                {warnings && <p className="text-green-600 text-sm mt-2 italic">{warnings}</p>}
+              </div>
+            </div>
+          </div>
+        ) : severity === 'Caution' ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-yellow-800 font-medium">⚠️ Use with caution</p>
+                {allergensDetected.length > 0 && (
+                  <p className="text-yellow-700 text-sm mt-1">
+                    May contain: {allergensDetected.join(', ')}
+                  </p>
+                )}
+                {warnings && <p className="text-yellow-600 text-sm mt-2 italic">{warnings}</p>}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-red-800 font-medium">🚫 Contains allergens</p>
+                {allergensDetected.length > 0 && (
+                  <p className="text-red-700 text-sm mt-1">
+                    Contains: {allergensDetected.join(', ')}
+                  </p>
+                )}
+                {warnings && <p className="text-red-600 text-sm mt-2 italic">{warnings}</p>}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">

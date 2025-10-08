@@ -5,6 +5,7 @@ import sys
 import json
 import base64
 import litellm
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -24,15 +25,17 @@ def detect_allergens(image_path, allergens):
     with open(image_path, "rb") as f:
         image_b64 = base64.b64encode(f.read()).decode()
 
-    # Load prompt from file
-    with open("allergen_prompt.md", "r") as f:
+    # Load prompt from file (relative to this module's directory)
+    module_dir = os.path.dirname(os.path.abspath(__file__))
+    prompt_path = os.path.join(module_dir, "allergen_prompt.md")
+    with open(prompt_path, "r") as f:
         prompt_template = f.read()
     
     prompt = prompt_template.format(allergens=', '.join(allergens))
 
     # Single API call
     response = litellm.completion(
-        model="gpt-5",  # Using GPT-5 model
+        model="gemini/gemini-2.5-flash",
         messages=[{
             "role": "user",
             "content": [
@@ -40,7 +43,6 @@ def detect_allergens(image_path, allergens):
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
             ]
         }]
-        # Note: GPT-5 only supports temperature=1 (default)
     )
 
     # Extract JSON from response
@@ -55,8 +57,8 @@ def detect_allergens(image_path, allergens):
 
 if __name__ == "__main__":
     # Hard-coded test values
-    image_path = "test_product.jpg"
-    allergens = ["nuts", "dairy", "gluten"]
+    image_path = "test_product_3.jpg"
+    allergens = ["nuts", "dairy"]
 
     result = detect_allergens(image_path, allergens)
     print(json.dumps(result, indent=2))

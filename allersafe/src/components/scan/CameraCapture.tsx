@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { uploadImageToS3 } from '@/lib/s3Upload'
 
 interface CameraCaptureProps {
   onCapture: (imageData: string) => void
@@ -14,6 +15,9 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [hasCamera, setHasCamera] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -64,12 +68,31 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
     }
   }
 
-  const handleConfirm = () => {
-    if (imageUrl) {
+  const handleConfirm = async () => {
+    if (!imageUrl) return
+
+    try {
+      setIsUploading(true)
+      setUploadError(null)
+      setUploadProgress(0)
+
+      // Stop camera stream
       if (stream) {
         stream.getTracks().forEach(track => track.stop())
       }
-      onCapture(imageUrl)
+
+      // Upload to S3 with progress tracking
+      const prefix = mode === 'product' ? 'product' : 'meal'
+      const s3Url = await uploadImageToS3(imageUrl, prefix, (progress) => {
+        setUploadProgress(progress)
+      })
+
+      // Pass S3 URL to parent
+      onCapture(s3Url)
+    } catch (error) {
+      console.error('Upload failed:', error)
+      setUploadError('Failed to upload image. Please try again.')
+      setIsUploading(false)
     }
   }
 
@@ -157,27 +180,55 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
         </div>
       )}
 
-      <div className={`absolute bottom-0 left-0 right-0 z-20 p-6 pb-24 flex justify-center gap-4 ${
+      <div className={`absolute bottom-0 left-0 right-0 z-20 p-6 pb-24 flex flex-col items-center gap-4 ${
         imageUrl ? 'bg-gray-50' : ''
       }`}>
+        {uploadError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg max-w-md">
+            <p className="text-sm">{uploadError}</p>
+          </div>
+        )}
+
         {imageUrl ? (
           <>
-            <button
-              onClick={handleRetake}
-              className="bg-gray-600 text-white px-6 py-3 rounded-full flex-shrink-0 shadow-md"
-            >
-              Retake
-            </button>
-            <button
-              onClick={handleConfirm}
-              className={`text-white px-6 py-3 rounded-full flex-shrink-0 shadow-md ${
-                mode === 'product'
-                  ? 'bg-gradient-to-br from-green-400 to-green-600'
-                  : 'bg-gradient-to-br from-emerald-700 to-emerald-900'
-              }`}
-            >
-              Use Photo
-            </button>
+            {isUploading ? (
+              <div className="text-center">
+                <div className="mb-2">
+                  <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        mode === 'product'
+                          ? 'bg-gradient-to-r from-green-400 to-green-600'
+                          : 'bg-gradient-to-r from-emerald-700 to-emerald-900'
+                      }`}
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Uploading... {Math.round(uploadProgress)}%
+                </p>
+              </div>
+            ) : (
+              <div className="flex gap-4">
+                <button
+                  onClick={handleRetake}
+                  className="bg-gray-600 text-white px-6 py-3 rounded-full flex-shrink-0 shadow-md"
+                >
+                  Retake
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  className={`text-white px-6 py-3 rounded-full flex-shrink-0 shadow-md ${
+                    mode === 'product'
+                      ? 'bg-gradient-to-br from-green-400 to-green-600'
+                      : 'bg-gradient-to-br from-emerald-700 to-emerald-900'
+                  }`}
+                >
+                  Use Photo
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center gap-4">

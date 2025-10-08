@@ -5,7 +5,9 @@ import sys
 import json
 import base64
 import litellm
+import os
 from typing import List, Dict
+from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,15 +26,17 @@ def find_alternatives(image_path: str, allergens: List[str]) -> List[Dict]:
     with open(image_path, "rb") as f:
         image_b64 = base64.b64encode(f.read()).decode()
 
-    # Load prompt from file
-    with open("alternative_prompt.md", "r") as f:
+    # Load prompt from file (relative to this module's directory)
+    module_dir = os.path.dirname(os.path.abspath(__file__))
+    prompt_path = os.path.join(module_dir, "alternative_prompt.md")
+    with open(prompt_path, "r") as f:
         prompt_template = f.read()
 
     prompt = prompt_template.format(allergens=', '.join(allergens))
 
-    # Single API call to GPT-5
+    # Single API call
     response = litellm.completion(
-        model="gpt-5",  # Using GPT-5 with search capabilities
+        model="gemini/gemini-2.5-flash",
         messages=[{
             "role": "user",
             "content": [
@@ -40,7 +44,6 @@ def find_alternatives(image_path: str, allergens: List[str]) -> List[Dict]:
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
             ]
         }]
-        # GPT-5 uses default temperature=1
     )
 
     # Extract JSON array from response
@@ -57,6 +60,19 @@ def find_alternatives(image_path: str, allergens: List[str]) -> List[Dict]:
 
             # Ensure we return a list
             if isinstance(alternatives, list):
+                # Add purchase links based on product names
+                for alt in alternatives:
+                    product_name = alt.get('alternative_name', '')
+                    if product_name:
+                        # URL-encode product name for search queries
+                        encoded_name = quote_plus(product_name)
+                        alt['purchase_links'] = [
+                            f"https://www.amazon.com/s?k={encoded_name}",
+                            f"https://www.walmart.com/search?q={encoded_name}"
+                        ]
+                    else:
+                        alt['purchase_links'] = []
+
                 # Limit to 5 alternatives, prioritize Safe over Caution
                 safe = [alt for alt in alternatives if alt.get('warning_level') == 'Safe']
                 caution = [alt for alt in alternatives if alt.get('warning_level') == 'Caution']
