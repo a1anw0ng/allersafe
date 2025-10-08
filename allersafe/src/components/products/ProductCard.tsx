@@ -75,9 +75,9 @@ export function ProductCard({ product }: ProductProps) {
             {product.allergenFree.map((allergen) => (
               <span
                 key={allergen}
-                className="px-2 py-1 bg-green-50 text-green-600 rounded text-xs"
+                className="px-2 py-1 bg-green-50 text-green-600 rounded text-xs capitalize"
               >
-                {allergen}
+                {allergen.replace(/-/g, ' ')}
               </span>
             ))}
           </div>
@@ -89,6 +89,8 @@ export function ProductCard({ product }: ProductProps) {
                 <a
                   key={link.store}
                   href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="px-3 py-1 bg-gradient-to-br from-green-400 to-green-600 text-white rounded text-sm hover:from-green-500 hover:to-green-700 transition-all"
                 >
                   {link.store}

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from allergen_detector.allergen_detector import detect_allergens
+from alternative_finder.alternative_finder import find_alternatives
 import boto3
 import tempfile
 import os
@@ -51,6 +52,32 @@ class AllergenDetectionResponse(BaseModel):
     severity: str = Field(..., description="Risk level: Safe, Caution, or Dangerous")
     allergens_detected: List[str] = Field(..., description="List of detected allergens")
     warnings: str = Field(..., description="Detailed explanation of the analysis")
+
+
+class AlternativeProduct(BaseModel):
+    alternative_name: str = Field(..., description="Specific product name with brand")
+    company: str = Field(..., description="Manufacturer name")
+    purchase_links: List[str] = Field(..., description="Links to purchase the product")
+    price: str = Field(..., description="Price in USD")
+    warning_level: str = Field(..., description="Safety level: Safe or Caution")
+    tags: List[str] = Field(..., description="Descriptive tags (max 3)")
+
+
+class AlternativeFinderRequest(BaseModel):
+    s3_image_url: str = Field(..., description="S3 URL of the product image")
+    allergens: List[str] = Field(..., description="List of allergens to avoid")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
+                "allergens": ["Milk", "Peanuts", "Gluten"]
+            }
+        }
+
+
+class AlternativeFinderResponse(BaseModel):
+    alternatives: List[AlternativeProduct] = Field(..., description="List of safe alternative products")
 
 
 # Helper function
@@ -102,7 +129,8 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "/health",
-            "detect_allergens": "/api/detect-allergens"
+            "detect_allergens": "/api/detect-allergens",
+            "find_alternatives": "/api/find-alternatives"
         }
     }
 
@@ -139,6 +167,46 @@ async def detect_allergens_endpoint(request: AllergenDetectionRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error processing allergen detection: {str(e)}"
+        )
+
+    finally:
+        # Clean up temporary file
+        if local_image_path and os.path.exists(local_image_path):
+            try:
+                os.unlink(local_image_path)
+            except Exception as e:
+                print(f"Warning: Failed to delete temp file {local_image_path}: {e}")
+
+
+@app.post("/api/find-alternatives", response_model=AlternativeFinderResponse)
+async def find_alternatives_endpoint(request: AlternativeFinderRequest):
+    """
+    Find safe alternative products for a given product image
+
+    Args:
+        request: Contains s3_image_url and list of allergens to avoid
+
+    Returns:
+        AlternativeFinderResponse with list of safe alternative products
+    """
+    local_image_path = None
+
+    try:
+        # Download image from S3
+        local_image_path = download_s3_image(request.s3_image_url)
+
+        # Find alternatives
+        alternatives_list = find_alternatives(local_image_path, request.allergens)
+
+        # Convert to Pydantic models
+        alternatives = [AlternativeProduct(**alt) for alt in alternatives_list]
+
+        return AlternativeFinderResponse(alternatives=alternatives)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error finding alternative products: {str(e)}"
         )
 
     finally:

@@ -25,7 +25,7 @@ export default function GroceriesScanPage() {
       console.log('========================')
 
       // Call backend API to detect allergens
-      const response = await fetch('http://localhost:8000/api/detect-allergens', {
+      const detectResponse = await fetch('http://localhost:8000/api/detect-allergens', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -36,21 +36,45 @@ export default function GroceriesScanPage() {
         })
       })
 
-      if (!response.ok) {
+      if (!detectResponse.ok) {
         throw new Error('Failed to analyze product')
       }
 
-      const result = await response.json()
-      console.log('=== BACKEND RESPONSE ===')
-      console.log(result)
-      console.log('========================')
+      const detectResult = await detectResponse.json()
+      console.log('=== ALLERGEN DETECTION RESPONSE ===')
+      console.log(detectResult)
+      console.log('===================================')
 
-      // Navigate to alternatives page with results
+      // Call backend API to find alternatives
+      const alternativesResponse = await fetch('http://localhost:8000/api/find-alternatives', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          s3_image_url: s3Url,
+          allergens: allergyProfile
+        })
+      })
+
+      let alternativesData = []
+      if (alternativesResponse.ok) {
+        const alternativesResult = await alternativesResponse.json()
+        console.log('=== ALTERNATIVES RESPONSE ===')
+        console.log(alternativesResult)
+        console.log('=============================')
+        alternativesData = alternativesResult.alternatives || []
+      }
+
+      // Store alternatives in sessionStorage (too large for URL params)
+      sessionStorage.setItem('alternativesData', JSON.stringify(alternativesData))
+
+      // Navigate to alternatives page with detection results
       const params = new URLSearchParams({
         imageUrl: s3Url,
-        severity: result.severity || 'Safe',
-        allergensDetected: JSON.stringify(result.allergens_detected || []),
-        warnings: result.warnings || ''
+        severity: detectResult.severity || 'Safe',
+        allergensDetected: JSON.stringify(detectResult.allergens_detected || []),
+        warnings: detectResult.warnings || ''
       })
 
       router.push(`/groceries/alternatives?${params.toString()}`)

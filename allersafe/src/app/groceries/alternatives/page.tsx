@@ -93,11 +93,52 @@ export default function AlternativesPage() {
       }
     }
 
-    // Filter alternatives based on severity
-    const filtered = mockAlternatives.filter(alt => {
-      return alt.safetyRating === 'safe'
-    })
-    setFilteredAlternatives(filtered)
+    // Read alternatives from sessionStorage
+    const alternativesJson = sessionStorage.getItem('alternativesData')
+    if (alternativesJson) {
+      try {
+        const apiAlternatives = JSON.parse(alternativesJson)
+
+        // Map API response to Alternative interface
+        const mapped: Alternative[] = apiAlternatives.map((alt: any, index: number) => {
+          // Extract store name from URL
+          const getStoreName = (url: string): string => {
+            if (url.includes('amazon.com')) return 'Amazon'
+            if (url.includes('walmart.com')) return 'Walmart'
+            if (url.includes('target.com')) return 'Target'
+            if (url.includes('wholefoods')) return 'Whole Foods'
+            return 'Store'
+          }
+
+          // Map purchase_links to storeLinks format
+          const storeLinks = alt.purchase_links?.map((url: string) => ({
+            store: getStoreName(url),
+            url: url,
+            price: alt.price || 'N/A'
+          })) || []
+
+          return {
+            id: `alt-${index}`,
+            name: alt.alternative_name || 'Unknown Product',
+            brand: alt.company || 'Unknown Brand',
+            image: '/api/placeholder/200/200',
+            price: alt.price || 'N/A',
+            safetyRating: (alt.warning_level?.toLowerCase() || 'safe') as 'safe' | 'caution' | 'unsafe',
+            allergenFree: alt.tags || [],
+            storeLinks: storeLinks
+          }
+        })
+
+        setFilteredAlternatives(mapped)
+      } catch (error) {
+        console.error('Error parsing alternatives data:', error)
+        // Fallback to mock data
+        setFilteredAlternatives(mockAlternatives.filter(alt => alt.safetyRating === 'safe'))
+      }
+    } else {
+      // Fallback to mock data if no session data
+      setFilteredAlternatives(mockAlternatives.filter(alt => alt.safetyRating === 'safe'))
+    }
   }, [searchParams])
 
   return (
@@ -180,11 +221,16 @@ export default function AlternativesPage() {
 
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">
-            {filteredAlternatives.length} Safe Alternative{filteredAlternatives.length !== 1 ? 's' : ''} Found
+            {filteredAlternatives.length > 0
+              ? `${filteredAlternatives.length} Safe Alternative${filteredAlternatives.length !== 1 ? 's' : ''} Found`
+              : 'Looking for Alternatives'
+            }
           </h2>
-          <p className="text-sm text-gray-600">
-            100% safe based on your dietary restrictions
-          </p>
+          {filteredAlternatives.length > 0 && (
+            <p className="text-sm text-gray-600">
+              Verified safe based on your dietary restrictions
+            </p>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -193,12 +239,13 @@ export default function AlternativesPage() {
           ))}
         </div>
 
-        {filteredAlternatives.length === 0 && (
+        {filteredAlternatives.length === 0 && !hasError && (
           <div className="text-center py-12">
             <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <p className="text-gray-500">No alternatives found matching your restrictions</p>
+            <p className="text-gray-600 font-medium mb-2">No alternatives found</p>
+            <p className="text-gray-500 text-sm">We couldn't find safe alternatives for this product at the moment.</p>
           </div>
         )}
       </div>
