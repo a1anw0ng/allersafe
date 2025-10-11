@@ -1,13 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CameraCapture } from '@/components/scan/CameraCapture'
 import { getAllergyNames } from '@/lib/allergyProfile'
+import { hasCompletedProfile } from '@/lib/profileChecker'
 
 export default function GroceriesScanPage() {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
+
+  // Safety check: redirect to profile if not completed
+  useEffect(() => {
+    if (!hasCompletedProfile()) {
+      router.replace('/profile')
+    }
+  }, [])
 
   const handleImageCapture = async (s3Url: string) => {
     setIsProcessing(true)
@@ -44,6 +52,21 @@ export default function GroceriesScanPage() {
       console.log('=== ALLERGEN DETECTION RESPONSE ===')
       console.log(detectResult)
       console.log('===================================')
+
+      // Check if no product was detected
+      const noProductDetected =
+        detectResult.error === 'no_product_detected' ||
+        detectResult.severity === 'NotDetected' ||
+        (detectResult.warnings && (
+          detectResult.warnings.toLowerCase().includes('does not contain any product') ||
+          detectResult.warnings.toLowerCase().includes('no product packaging') ||
+          detectResult.warnings.toLowerCase().includes('no allergen analysis can be performed')
+        ))
+
+      if (noProductDetected) {
+        router.push('/groceries/not-detected')
+        return
+      }
 
       // Call backend API to find alternatives
       const alternativesResponse = await fetch('http://localhost:8000/api/find-alternatives', {
@@ -95,8 +118,8 @@ export default function GroceriesScanPage() {
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto mb-4"></div>
-            <p className="text-gray-800 text-lg">Analyzing product...</p>
-            <p className="text-gray-500 text-sm mt-2">Checking ingredients and allergens</p>
+            <p className="text-gray-800 text-lg">Analyzing product</p>
+            <p className="text-gray-500 text-sm mt-2">Checking ingredients and dietary restrictions</p>
           </div>
         </div>
       ) : (

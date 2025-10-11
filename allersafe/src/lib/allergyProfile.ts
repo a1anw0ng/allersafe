@@ -134,6 +134,16 @@ export function formatAllergyProfileString(): string {
  * @returns Array of all allergy/restriction names
  */
 export function getAllergyNames(): string[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  // Check if user selected "No dietary restrictions"
+  const noRestrictions = localStorage.getItem('noDietaryRestrictions')
+  if (noRestrictions === 'true') {
+    return []
+  }
+
   const { restrictions: selectedIds, customAllergies } = getAllergyProfile()
 
   const names = selectedIds.map((id: string) => {

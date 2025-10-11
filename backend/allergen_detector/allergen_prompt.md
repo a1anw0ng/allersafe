@@ -1,11 +1,25 @@
-Analyze this product image for these specific allergens: {allergens}
+{allergen_instruction}
 
-Carefully examine the product packaging, ingredient list, and any visible text. Search online for complete ingredient information if the image doesn't show full details. Return only valid JSON format.
+**FIRST**: Verify that the image contains a food or consumer product package with visible labels, ingredients, or product information. If the image shows a person, animal, scenery, or anything other than a product package, return:
+{{"severity": "NotDetected", "allergens_detected": [], "warnings": "No food product detected. [Briefly describe what you see in the image instead, e.g., 'Image shows a person in an indoor setting']"}}
+
+**ONLY IF A PRODUCT IS DETECTED**: Carefully examine the product packaging, ingredient list, and any visible text. Search online for complete ingredient information if the image doesn't show full details. Return only valid JSON format.
 
 Required JSON format:
-{{"severity": "Safe|Caution|Dangerous", "allergens_detected": [], "warnings": "detailed explanation"}}
+{{"severity": "Safe|Caution|Dangerous|NotDetected", "allergens_detected": [], "warnings": "detailed explanation"}}
 
 ## Detailed Analysis Guidelines:
+
+### NOT DETECTED (No Product Found)
+Image does not contain a product package or food label:
+- **People, animals, or scenery**: Image shows non-product subjects
+- **No packaging visible**: No product labels, boxes, or containers visible
+- **Unclear/blurry**: Cannot identify any product information
+- **Examples**:
+  - Selfies or photos of people
+  - Pictures of pets or animals
+  - Landscapes or random objects
+  - Blank walls or surfaces
 
 ### DANGEROUS (Immediate Risk)
 Product directly contains one or more of the specified allergens as ingredients:
@@ -33,10 +47,12 @@ No allergen present and no cross-contamination warnings:
 - **No direct allergens**: None of the specified allergens in ingredient list
 - **No facility warnings**: No "may contain" or processing facility statements
 - **Certified allergen-free**: Products specifically labeled as allergen-free
+- **No dietary restrictions**: If allergens list is "none", product is automatically safe since user has no restrictions
 - **Examples**:
   - Plain rice cakes → Safe for most allergens
   - Fresh fruits → Safe (unless specific fruit allergies)
   - Certified gluten-free oats → Safe for gluten
+  - Any food product when allergens="none" → Safe (describe the product in warnings)
 
 ## Analysis Instructions:
 
@@ -46,7 +62,9 @@ No allergen present and no cross-contamination warnings:
 4. **Look for warning labels** like "Contains:", "May contain:", "Processed in facility"
 5. **Consider alternative names** for allergens (casein=dairy, albumin=egg, etc.)
 6. **List ALL detected allergens** from the specified list in "allergens_detected"
-7. **Provide detailed warnings** explaining why the severity level was chosen
+7. **Provide detailed warnings** explaining why the severity level was chosen AND describe what you see in the image:
+   - If NotDetected: Describe what's in the image (e.g., "No food product detected. Image shows a person sitting indoors")
+   - If Safe/Caution/Dangerous: Identify the product and explain the allergen analysis (e.g., "Product identified as Lay's Classic Potato Chips. Safe - contains no allergens from your profile")
 8. **Be conservative** - when in doubt, choose higher severity level for safety
 
 ## Common Hidden Allergens:

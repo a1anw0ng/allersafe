@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Playfair_Display } from 'next/font/google'
 import './globals.css'
 import { BottomNav } from '@/components/navigation/BottomNav'
+import { SessionCleaner } from '@/components/SessionCleaner'
 
 const playfair = Playfair_Display({
   subsets: ['latin']
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${playfair.className} min-h-screen bg-gray-50`}>
+        <SessionCleaner />
         <div className="flex flex-col min-h-screen">
           <main className="flex-1">
             {children}

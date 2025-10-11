@@ -48,11 +48,15 @@ const restrictions: Restriction[] = [
   { id: 'kosher', name: 'Kosher', category: 'lifestyle', icon: '✡️' },
 ]
 
-export function AllergyChecklist() {
+interface AllergyChecklistProps {
+  onSave?: () => void
+}
+
+export function AllergyChecklist({ onSave }: AllergyChecklistProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [customAllergies, setCustomAllergies] = useState<string[]>([])
   const [newAllergy, setNewAllergy] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [noRestrictions, setNoRestrictions] = useState(false)
 
   useEffect(() => {
     const saved = localStorage.getItem('dietaryRestrictions')
@@ -70,6 +74,11 @@ export function AllergyChecklist() {
       const validCustom = parsed.filter((a: string) => a && a.trim() !== '')
       setCustomAllergies(validCustom)
     }
+
+    const savedNoRestrictions = localStorage.getItem('noDietaryRestrictions')
+    if (savedNoRestrictions === 'true') {
+      setNoRestrictions(true)
+    }
   }, [])
 
   const handleToggle = (id: string) => {
@@ -78,8 +87,26 @@ export function AllergyChecklist() {
       newSelected.delete(id)
     } else {
       newSelected.add(id)
+      // If user selects any restriction, uncheck "No restrictions"
+      if (noRestrictions) {
+        setNoRestrictions(false)
+      }
     }
     setSelected(newSelected)
+  }
+
+  const handleNoRestrictionsToggle = () => {
+    const newValue = !noRestrictions
+    setNoRestrictions(newValue)
+
+    // If checking "No restrictions", clear all other selections and localStorage
+    if (newValue) {
+      setSelected(new Set())
+      setCustomAllergies([])
+      // Immediately clear localStorage to prevent stale data
+      localStorage.removeItem('dietaryRestrictions')
+      localStorage.removeItem('customAllergies')
+    }
   }
 
   const handleAddCustom = () => {
@@ -88,6 +115,11 @@ export function AllergyChecklist() {
       setCustomAllergies(updated)
       localStorage.setItem('customAllergies', JSON.stringify(updated))
       setNewAllergy('')
+
+      // If user adds custom allergy, uncheck "No restrictions"
+      if (noRestrictions) {
+        setNoRestrictions(false)
+      }
     }
   }
 
@@ -97,14 +129,22 @@ export function AllergyChecklist() {
     localStorage.setItem('customAllergies', JSON.stringify(updated))
   }
 
-  const handleSave = () => {
-    setIsSaving(true)
-    localStorage.setItem('dietaryRestrictions', JSON.stringify(Array.from(selected)))
-    localStorage.setItem('customAllergies', JSON.stringify(customAllergies))
-    setTimeout(() => {
-      setIsSaving(false)
-    }, 1000)
-  }
+  // Expose save function to parent via useEffect
+  useEffect(() => {
+    // Store save function in window for parent to call
+    (window as any).saveDietaryRestrictions = () => {
+      // Clear old data if "No restrictions" is selected
+      if (noRestrictions) {
+        localStorage.setItem('dietaryRestrictions', JSON.stringify([]))
+        localStorage.setItem('customAllergies', JSON.stringify([]))
+        localStorage.setItem('noDietaryRestrictions', 'true')
+      } else {
+        localStorage.setItem('dietaryRestrictions', JSON.stringify(Array.from(selected)))
+        localStorage.setItem('customAllergies', JSON.stringify(customAllergies))
+        localStorage.setItem('noDietaryRestrictions', 'false')
+      }
+    }
+  }, [selected, customAllergies, noRestrictions])
 
   const fdaAllergens = restrictions.filter(r => r.category === 'allergy').slice(0, 9) // FDA Top 9
   const fruitAllergens = restrictions.filter(r => r.category === 'allergy').slice(9) // Fruit allergies
@@ -113,6 +153,24 @@ export function AllergyChecklist() {
 
   return (
     <div className="space-y-6">
+      {/* No Dietary Restrictions Option */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <label className="flex items-start space-x-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={noRestrictions}
+            onChange={handleNoRestrictionsToggle}
+            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+          />
+          <div>
+            <span className="text-base font-medium text-gray-900">I have no dietary restrictions</span>
+            <p className="text-sm text-gray-600 mt-1">
+              Check this if you don't have any allergies or dietary preferences. This will allow you to scan all products.
+            </p>
+          </div>
+        </label>
+      </div>
+
       <div>
         <h3 className="text-base font-semibold text-gray-700 uppercase tracking-wider mb-3">
           Allergies
@@ -261,14 +319,6 @@ export function AllergyChecklist() {
           )}
         </div>
       </div>
-
-      <button
-        onClick={handleSave}
-        disabled={isSaving}
-        className="w-full bg-teal-600 text-white py-3 px-4 rounded-md hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base"
-      >
-        {isSaving ? 'Saving...' : 'Save Preferences'}
-      </button>
     </div>
   )
 }

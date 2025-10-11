@@ -11,6 +11,7 @@ from alternative_finder.alternative_finder import find_alternatives
 import boto3
 import tempfile
 import os
+import traceback
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 
@@ -164,6 +165,12 @@ async def detect_allergens_endpoint(request: AllergenDetectionRequest):
         return AllergenDetectionResponse(**result)
 
     except Exception as e:
+        error_traceback = traceback.format_exc()
+        print(f"\n{'='*80}")
+        print(f"ERROR in /api/detect-allergens endpoint:")
+        print(f"{'='*80}")
+        print(error_traceback)
+        print(f"{'='*80}\n")
         raise HTTPException(
             status_code=500,
             detail=f"Error processing allergen detection: {str(e)}"
@@ -204,6 +211,12 @@ async def find_alternatives_endpoint(request: AlternativeFinderRequest):
         return AlternativeFinderResponse(alternatives=alternatives)
 
     except Exception as e:
+        error_traceback = traceback.format_exc()
+        print(f"\n{'='*80}")
+        print(f"ERROR in /api/find-alternatives endpoint:")
+        print(f"{'='*80}")
+        print(error_traceback)
+        print(f"{'='*80}\n")
         raise HTTPException(
             status_code=500,
             detail=f"Error finding alternative products: {str(e)}"

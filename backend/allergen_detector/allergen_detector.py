@@ -30,8 +30,16 @@ def detect_allergens(image_path, allergens):
     prompt_path = os.path.join(module_dir, "allergen_prompt.md")
     with open(prompt_path, "r") as f:
         prompt_template = f.read()
-    
-    prompt = prompt_template.format(allergens=', '.join(allergens))
+
+    # Format prompt based on whether allergens are provided
+    if allergens and len(allergens) > 0:
+        allergen_list = ', '.join(allergens)
+        allergen_instruction = f"Analyze this product image for these specific allergens: {allergen_list}"
+    else:
+        allergen_list = "none"
+        allergen_instruction = "Analyze this image. The user has no dietary restrictions, but first verify if this image contains a food product."
+
+    prompt = prompt_template.format(allergens=allergen_list, allergen_instruction=allergen_instruction)
 
     # Single API call
     response = litellm.completion(

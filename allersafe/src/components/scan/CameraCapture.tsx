@@ -19,7 +19,7 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const startCamera = () => {
     if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then((mediaStream) => {
@@ -34,6 +34,10 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
           setHasCamera(false)
         })
     }
+  }
+
+  useEffect(() => {
+    startCamera()
 
     return () => {
       if (stream) {
@@ -98,6 +102,8 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
 
   const handleRetake = () => {
     setImageUrl(null)
+    setUploadError(null)
+    startCamera()
   }
 
   return (

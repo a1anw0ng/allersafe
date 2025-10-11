@@ -65,6 +65,7 @@ export default function AlternativesPage() {
   const [allergensDetected, setAllergensDetected] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string>('')
   const [hasError, setHasError] = useState(false)
+  const [showWarnings, setShowWarnings] = useState(false)
   const [filteredAlternatives, setFilteredAlternatives] = useState<Alternative[]>(
     mockAlternatives.filter(alt => alt.safetyRating === 'safe')
   )
@@ -177,9 +178,22 @@ export default function AlternativesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <p className="text-green-800 font-medium">✓ Safe to consume</p>
-                <p className="text-green-700 text-sm mt-1">No allergens detected from your profile</p>
-                {warnings && <p className="text-green-600 text-sm mt-2 italic">{warnings}</p>}
+                <p className="text-green-800 font-medium">Safe to consume</p>
+                <p className="text-green-700 text-sm mt-1">No dietary restrictions detected from your profile</p>
+                {warnings && (
+                  <>
+                    <button
+                      onClick={() => setShowWarnings(!showWarnings)}
+                      className="text-green-600 text-sm mt-2 underline hover:text-green-700 flex items-center"
+                    >
+                      {showWarnings ? 'Hide' : 'More'} information
+                      <svg className={`w-4 h-4 ml-1 transition-transform ${showWarnings ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {showWarnings && <p className="text-green-600 text-sm mt-2 italic">{warnings}</p>}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -190,13 +204,26 @@ export default function AlternativesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div className="flex-1">
-                <p className="text-yellow-800 font-medium">⚠️ Use with caution</p>
+                <p className="text-yellow-800 font-medium">Use with caution</p>
                 {allergensDetected.length > 0 && (
                   <p className="text-yellow-700 text-sm mt-1">
-                    May contain: {allergensDetected.join(', ')}
+                    May conflict with your dietary restrictions: {allergensDetected.join(', ')}
                   </p>
                 )}
-                {warnings && <p className="text-yellow-600 text-sm mt-2 italic">{warnings}</p>}
+                {warnings && (
+                  <>
+                    <button
+                      onClick={() => setShowWarnings(!showWarnings)}
+                      className="text-yellow-600 text-sm mt-2 underline hover:text-yellow-700 flex items-center"
+                    >
+                      {showWarnings ? 'Hide' : 'More'} information
+                      <svg className={`w-4 h-4 ml-1 transition-transform ${showWarnings ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {showWarnings && <p className="text-yellow-600 text-sm mt-2 italic">{warnings}</p>}
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -207,13 +234,26 @@ export default function AlternativesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div className="flex-1">
-                <p className="text-red-800 font-medium">🚫 Contains allergens</p>
+                <p className="text-red-800 font-medium">Violates dietary restrictions</p>
                 {allergensDetected.length > 0 && (
                   <p className="text-red-700 text-sm mt-1">
-                    Contains: {allergensDetected.join(', ')}
+                    Dietary Restriction: {allergensDetected.join(', ')}
                   </p>
                 )}
-                {warnings && <p className="text-red-600 text-sm mt-2 italic">{warnings}</p>}
+                {warnings && (
+                  <>
+                    <button
+                      onClick={() => setShowWarnings(!showWarnings)}
+                      className="text-red-600 text-sm mt-2 underline hover:text-red-700 flex items-center"
+                    >
+                      {showWarnings ? 'Hide' : 'More'} information
+                      <svg className={`w-4 h-4 ml-1 transition-transform ${showWarnings ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {showWarnings && <p className="text-red-600 text-sm mt-2 italic">{warnings}</p>}
+                  </>
+                )}
               </div>
             </div>
           </div>

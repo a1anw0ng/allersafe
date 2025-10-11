@@ -17,7 +17,7 @@ def find_alternatives(image_path: str, allergens: List[str]) -> List[Dict]:
 
     Args:
         image_path: Path to product image
-        allergens: List of allergens to avoid
+        allergens: List of allergens to avoid (can be empty for general alternatives)
 
     Returns:
         List of alternative products (max 5) with details
@@ -32,7 +32,41 @@ def find_alternatives(image_path: str, allergens: List[str]) -> List[Dict]:
     with open(prompt_path, "r") as f:
         prompt_template = f.read()
 
-    prompt = prompt_template.format(allergens=', '.join(allergens))
+    # Format prompt based on whether allergens are provided
+    if allergens and len(allergens) > 0:
+        allergen_context = f" for someone with these allergies: {', '.join(allergens)}"
+        safety_requirement = " that are SAFE for someone with the listed allergies"
+        warning_guidelines = """### SAFE (No Risk) - PRIORITIZE THESE:
+- Product contains NONE of the user's allergens
+- No cross-contamination warnings
+- No "may contain" statements for user's allergens
+- No shared equipment warnings for user's allergens
+
+### CAUTION (Potential Risk) - LIST AFTER SAFE OPTIONS:
+- "May contain traces of" user's allergens
+- "Processed in facility that also processes" user's allergens
+- Manufactured on shared equipment with user's allergens
+- Unclear labeling about allergen content"""
+        search_criteria = "- Products in the same category that are free from user's allergens\n   - Popular allergen-free brands for this product type"
+        verification_steps = "- Confirm it doesn't contain any of the user's allergens\n   - Check for cross-contamination warnings"
+    else:
+        allergen_context = " that are similar or healthier alternatives"
+        safety_requirement = " in the same category"
+        warning_guidelines = """### SAFE (No Allergen Restrictions):
+- User has NO dietary restrictions or allergies
+- ALL products are safe from an allergen perspective
+- Mark ALL alternatives as "Safe" (do not use "Caution")
+- Focus on finding similar, quality products in the same category"""
+        search_criteria = "- Products in the same category (similar type/flavor profile)\n   - Popular well-reviewed brands"
+        verification_steps = "- Verify it's a legitimate alternative\n   - Check general quality and reviews"
+
+    prompt = prompt_template.format(
+        allergen_context=allergen_context,
+        safety_requirement=safety_requirement,
+        warning_guidelines=warning_guidelines,
+        search_criteria=search_criteria,
+        verification_steps=verification_steps
+    )
 
     # Single API call
     response = litellm.completion(
@@ -85,7 +119,11 @@ def find_alternatives(image_path: str, allergens: List[str]) -> List[Dict]:
         else:
             # Try parsing as single object
             return [json.loads(content)]
-    except:
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error parsing alternatives response: {e}")
+        print(f"Raw response content: {content}")
+
         # Return error response
         return [{
             "alternative_name": "Analysis failed",
@@ -93,7 +131,7 @@ def find_alternatives(image_path: str, allergens: List[str]) -> List[Dict]:
             "purchase_links": [],
             "price": "N/A",
             "warning_level": "Caution",
-            "tags": ["error"]
+            "tags": ["Error"]
         }]
 
 if __name__ == "__main__":

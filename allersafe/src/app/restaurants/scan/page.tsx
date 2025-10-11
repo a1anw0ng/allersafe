@@ -1,13 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CameraCapture } from '@/components/scan/CameraCapture'
 import { getAllergyNames } from '@/lib/allergyProfile'
+import { hasCompletedProfile } from '@/lib/profileChecker'
 
 export default function RestaurantsScanPage() {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
+
+  // Safety check: redirect to profile if not completed
+  useEffect(() => {
+    if (!hasCompletedProfile()) {
+      router.replace('/profile')
+    }
+  }, [])
 
   const handleImageCapture = async (s3Url: string) => {
     setIsProcessing(true)

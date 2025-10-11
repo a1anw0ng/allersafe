@@ -27,7 +27,7 @@ export function BottomNav() {
 
   const isActive = (path: string) => {
     if (path === '/') {
-      return pathname === '/' || pathname === '/groceries' || pathname === '/restaurants'
+      return pathname === '/'
     }
     return pathname?.startsWith(path)
   }
