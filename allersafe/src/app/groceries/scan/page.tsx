@@ -38,7 +38,8 @@ export default function GroceriesScanPage() {
       console.log('===============================')
 
       // Use SSE endpoint for real-time phase updates
-      const response = await fetch('http://localhost:8000/api/analyze-product-stream', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/api/analyze-product-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
