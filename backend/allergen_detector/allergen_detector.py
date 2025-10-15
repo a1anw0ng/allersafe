@@ -218,6 +218,7 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         # Validate severity matches warnings content
         warnings_text = final_result.get('warnings', '').lower()
         severity = final_result.get('severity', 'Caution')
+        allergens_detected = final_result.get('allergens_detected', [])
 
         # Check if warnings text contradicts severity
         if 'safety status: safe' in warnings_text and severity != 'Safe':
@@ -240,6 +241,26 @@ def detect_allergens(image_path, allergens, progress_callback=None):
             print(f"   But severity field is: {severity}")
             print(f"   Correcting severity to: Caution")
             final_result['severity'] = 'Caution'
+
+        # Validate allergens_detected consistency with Safety Status line
+        # Extract allergens mentioned in Safety Status line
+        safety_status_match = re.search(r'\*\*safety status:\*\* (.*?) for individuals with (.*?) allerg', warnings_text)
+        if safety_status_match and allergens_detected:
+            mentioned_allergens_text = safety_status_match.group(2)
+            # Extract individual allergen names from the text (handles "X and Y" or "X, Y, and Z")
+            mentioned_allergens_raw = re.split(r',? and |, ', mentioned_allergens_text)
+            mentioned_allergens = [a.strip().lower().rstrip('s') for a in mentioned_allergens_raw]  # Remove plural 's'
+
+            # Normalize allergens_detected for comparison
+            detected_normalized = [a.strip().lower().rstrip('s') for a in allergens_detected]
+
+            # Check if they match (order doesn't matter)
+            if set(mentioned_allergens) != set(detected_normalized):
+                print(f"⚠️  WARNING: Allergen consistency issue detected!")
+                print(f"   allergens_detected array: {allergens_detected}")
+                print(f"   Safety Status mentions: {mentioned_allergens_raw}")
+                print(f"   These should match! The Safety Status should only mention allergens in allergens_detected.")
+                # Note: We don't auto-correct this as it's more complex - flag it for review
 
         # Merge sources from web research and grounding metadata
         all_sources = sources_call2 if sources_call2 else []

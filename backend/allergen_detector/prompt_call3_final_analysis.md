@@ -53,8 +53,8 @@ Combine all information from the image analysis and web research to determine th
 **Return ONLY valid JSON in this exact format:**
 {{
   "severity": "Safe|Caution|Dangerous|NotDetected",
-  "allergens_detected": ["list of user's allergens found in this product"],
-  "warnings": "**Product Identified:** [Product name]\n\n**Safety Status:** [Safe/Caution/Dangerous] for individuals with [allergen] allergy\n\n**Analysis:**\n\n• **[Allergen Name]:** Brief analysis of whether it's present. Use inline citations like [1] or [2] to reference sources. Be clear and concise.\n\n• **[Next Allergen]:** Continue for each allergen.\n\n**Conclusion:** Final verdict with reasoning. For Caution-level products, use phrases like 'Exercise strong caution' or 'Use with caution' rather than 'NOT RECOMMENDED'. Use sentence case, not all caps. For Dangerous-level products, you may use stronger language. Cite sources inline [1][2] as needed.",
+  "allergens_detected": ["list of user's allergens that pose a risk in this product"],
+  "warnings": "**Product Identified:** [Product name]\n\n**Safety Status:** [Safe/Caution/Dangerous] for individuals with [ONLY risky allergen(s)] allerg[y/ies]\n\n**Analysis:**\n\n• **[Allergen Name]:** Detailed analysis (2-4 sentences) explaining whether the allergen is present as a direct ingredient or cross-contamination risk. Include specific details from the ingredient list and warnings. Use inline citations [1] or [2] after each claim that references a source.\n\n• **[Next Allergen]:** Continue this format for EACH allergen in the user's profile (analyze all, even if some are safe).\n\n**Conclusion:** Start by stating the classification (e.g., 'This product is classified as [Caution/Dangerous/Safe]'). Explain the primary reason for this classification, citing specific warnings or ingredients. End with appropriate cautionary language:\n- For Caution: Use 'Exercise strong caution' or 'Use with caution' (NEVER use 'NOT RECOMMENDED')\n- For Dangerous: Use stronger language like 'This product is NOT SAFE' or 'Avoid this product'\n- For Safe: Confirm safety clearly\nCite sources inline [1][2] throughout. Use sentence case, not all caps.",
   "product_name": "product name from analysis",
   "sources": [
     {{"title": "Brief descriptive title of source", "url": "URL from web research"}}
@@ -69,7 +69,29 @@ Combine all information from the image analysis and web research to determine th
 
 2. If severity is "Safe", allergens_detected MUST be an empty array []
 
-3. Do NOT include any instructional notes or formatting reminders in the warnings field. Only include the actual analysis content as specified in the format above.
+3. **CONSISTENCY RULE**: The allergens mentioned in the "Safety Status" line MUST exactly match the allergens in the "allergens_detected" array:
+   - If allergens_detected = ["Peanuts"] → Safety Status should say "for individuals with Peanut allergy"
+   - If allergens_detected = ["Peanuts", "Milk"] → Safety Status should say "for individuals with Peanut and Milk allergies"
+   - If allergens_detected = [] (Safe) → Safety Status should NOT mention specific allergens
+
+4. Do NOT include any instructional notes or formatting reminders in the warnings field. Only include the actual analysis content as specified in the format above.
+
+**EXAMPLES OF CORRECT FORMATTING:**
+
+Example 1: User has Milk and Peanut allergies, but only Peanuts poses a risk
+- allergens_detected: ["Peanuts"]
+- Safety Status: "Caution for individuals with Peanut allergy"
+- Analysis section: Analyze BOTH Milk (explain it's safe) AND Peanuts (explain the risk)
+
+Example 2: User has Milk and Peanut allergies, both pose risks
+- allergens_detected: ["Milk", "Peanuts"]
+- Safety Status: "Dangerous for individuals with Milk and Peanut allergies"
+- Analysis section: Analyze BOTH allergens, explaining risks for each
+
+Example 3: User has Milk and Peanut allergies, both are safe
+- allergens_detected: []
+- Safety Status: "Safe for individuals with Milk and Peanut allergies"
+- Analysis section: Analyze BOTH allergens, explaining why each is safe
 
 ## Common Hidden Allergens Reference:
 - **Dairy**: Casein, whey, lactose, milk powder, butter, cream
