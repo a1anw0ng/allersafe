@@ -149,7 +149,7 @@ export function getAllergyNames(): string[] {
   const names = selectedIds.map((id: string) => {
     const restriction = restrictions.find(r => r.id === id)
     return restriction ? restriction.name : null
-  }).filter((name): name is string => name !== null)
+  }).filter((name: string | null): name is string => name !== null)
 
   return [...names, ...customAllergies]
 }
