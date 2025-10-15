@@ -215,6 +215,32 @@ def detect_allergens(image_path, allergens, progress_callback=None):
 
         final_result = json.loads(json_str)
 
+        # Validate severity matches warnings content
+        warnings_text = final_result.get('warnings', '').lower()
+        severity = final_result.get('severity', 'Caution')
+
+        # Check if warnings text contradicts severity
+        if 'safety status: safe' in warnings_text and severity != 'Safe':
+            print(f"⚠️  WARNING: Severity mismatch detected!")
+            print(f"   Warnings text indicates: SAFE")
+            print(f"   But severity field is: {severity}")
+            print(f"   Correcting severity to: Safe")
+            final_result['severity'] = 'Safe'
+            # Also clear allergens_detected if marked as safe
+            final_result['allergens_detected'] = []
+        elif 'safety status: dangerous' in warnings_text and severity != 'Dangerous':
+            print(f"⚠️  WARNING: Severity mismatch detected!")
+            print(f"   Warnings text indicates: DANGEROUS")
+            print(f"   But severity field is: {severity}")
+            print(f"   Correcting severity to: Dangerous")
+            final_result['severity'] = 'Dangerous'
+        elif 'safety status: caution' in warnings_text and severity != 'Caution':
+            print(f"⚠️  WARNING: Severity mismatch detected!")
+            print(f"   Warnings text indicates: CAUTION")
+            print(f"   But severity field is: {severity}")
+            print(f"   Correcting severity to: Caution")
+            final_result['severity'] = 'Caution'
+
         # Merge sources from web research and grounding metadata
         all_sources = sources_call2 if sources_call2 else []
         if 'sources' in web_research and web_research['sources']:

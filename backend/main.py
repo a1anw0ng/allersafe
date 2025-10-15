@@ -399,6 +399,22 @@ async def analyze_product_stream(request: ProductAnalysisRequest):
                         progress_callback=progress_callback
                     )
 
+                    # Debug logging
+                    print(f"\n{'='*80}")
+                    print(f"CHECKING FOR NON-PRODUCT:")
+                    print(f"  Severity: {allergen_result.get('severity')}")
+                    print(f"  Is NotDetected: {allergen_result.get('severity') == 'NotDetected'}")
+                    print(f"{'='*80}\n")
+
+                    # Check if product was detected
+                    # If not, skip phases 4-8 and return early
+                    if allergen_result.get('severity') == 'NotDetected':
+                        print("🛑 NO PRODUCT DETECTED - Skipping phases 4-8")
+                        return {
+                            'allergen_analysis': allergen_result,
+                            'alternatives': []
+                        }
+
                     # Run alternative finding (phases 4-8)
                     alternatives = find_alternatives(
                         local_image_path,

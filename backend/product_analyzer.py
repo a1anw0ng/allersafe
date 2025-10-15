@@ -95,6 +95,29 @@ def analyze_product(image_path: str, allergens: List[str], verbose: bool = True)
         print(f"  Sources Found: {len(allergen_result.get('sources', []))}")
         print()
 
+    # Check if product was detected - if not, skip phases 4-8
+    if allergen_result.get('severity') == 'NotDetected':
+        if verbose:
+            print("⚠️  No product detected - skipping alternative finding (Phases 4-8)")
+            print()
+
+        # Return early with empty alternatives
+        return {
+            "allergen_analysis": allergen_result,
+            "alternatives": [],
+            "summary": {
+                "original_product": allergen_result.get('product_name', 'Unknown'),
+                "safety_status": "NotDetected",
+                "allergens_found": [],
+                "alternatives_found": 0,
+                "safe_alternatives": 0,
+                "caution_alternatives": 0,
+                "total_sources": len(allergen_result.get('sources', [])),
+                "analysis_time_seconds": round(time.time() - start_time, 2)
+            },
+            "all_sources": allergen_result.get('sources', [])
+        }
+
     # ============================================================
     # PHASE 4-8: Alternative Finding
     # ============================================================

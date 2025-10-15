@@ -61,7 +61,15 @@ Combine all information from the image analysis and web research to determine th
   ]
 }}
 
-**IMPORTANT:** Do NOT include any instructional notes or formatting reminders in the warnings field. Only include the actual analysis content as specified in the format above.
+**CRITICAL REQUIREMENTS:**
+1. The "severity" field MUST exactly match the "Safety Status" in the warnings text:
+   - If warnings says "Safety Status: Safe" → severity MUST be "Safe"
+   - If warnings says "Safety Status: Caution" → severity MUST be "Caution"
+   - If warnings says "Safety Status: Dangerous" → severity MUST be "Dangerous"
+
+2. If severity is "Safe", allergens_detected MUST be an empty array []
+
+3. Do NOT include any instructional notes or formatting reminders in the warnings field. Only include the actual analysis content as specified in the format above.
 
 ## Common Hidden Allergens Reference:
 - **Dairy**: Casein, whey, lactose, milk powder, butter, cream
