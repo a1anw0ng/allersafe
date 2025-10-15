@@ -96,8 +96,7 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     response1 = litellm.completion(
-        # model="gemini/gemini-2.5-flash",
-        model="cerebras/qwen-3-235b-a22b-thinking-2507",
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",
         messages=[{
             "role": "user",
             "content": prompt1
@@ -106,62 +105,15 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
     )
 
     content1 = response1.choices[0].message.content
-    print(f"Call 1 Response (length: {len(content1)}): {content1[:500]}...\n")
+    print(f"Call 1 Response: {content1}\n")
 
-    # For thinking models, extract the LAST complete JSON object (skip reasoning text)
-    def extract_last_json_object(text):
-        """Extract the last complete JSON object from text (handles thinking models)"""
-        # Find the last occurrence of a JSON object pattern
-        brace_count = 0
-        json_start = -1
-
-        # Scan backwards to find the last complete JSON object
-        for i in range(len(text) - 1, -1, -1):
-            if text[i] == '}':
-                if brace_count == 0:
-                    json_end = i + 1
-                brace_count += 1
-            elif text[i] == '{':
-                brace_count -= 1
-                if brace_count == 0:
-                    json_start = i
-                    # Found a complete JSON object, try to parse it
-                    try:
-                        obj = json.loads(text[json_start:json_end])
-                        return obj
-                    except:
-                        continue  # Keep searching backwards
-        return None
+    start = content1.find('{')
+    end = content1.rfind('}') + 1
 
     try:
-        category_analysis = extract_last_json_object(content1)
-        if not category_analysis:
-            raise ValueError("No valid JSON object found")
-    except Exception as e:
-        # Enhanced debugging for Phase 4 failure
-        print(f"{'='*80}")
-        print(f"ERROR: Phase 4 (Category Analysis) JSON parsing failed")
-        print(f"{'='*80}")
-        print(f"Exception: {str(e)}")
-        print(f"Response length: {len(content1)} characters")
-        print(f"Last 1000 chars of response: {content1[-1000:]}")
-        print(f"{'='*80}\n")
-        # Switch to Gemini fallback
-        print("Retrying Phase 4 with Gemini...")
-        response1_retry = litellm.completion(
-            model="gemini/gemini-2.5-pro",
-            messages=[{
-                "role": "user",
-                "content": prompt1
-            }]
-        )
-        content1_retry = response1_retry.choices[0].message.content
-        start = content1_retry.find('{')
-        end = content1_retry.rfind('}') + 1
-        try:
-            category_analysis = json.loads(content1_retry[start:end] if start >= 0 else content1_retry)
-        except:
-            return [{"alternative_name": "Category analysis failed", "company": "N/A", "purchase_links": [], "price": "N/A", "warning_level": "Caution", "tags": ["Error"]}]
+        category_analysis = json.loads(content1[start:end] if start >= 0 else content1)
+    except:
+        return [{"alternative_name": "Category analysis failed", "company": "N/A", "purchase_links": [], "price": "N/A", "warning_level": "Caution", "tags": ["Error"]}]
 
     # ============================================================
     # CALL 2: Find Alternative Candidates (With Web Search)
@@ -175,7 +127,7 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     response2 = litellm.completion(
-        model="gemini/gemini-2.5-pro",  # Phase 5 requires web search
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 5 requires web search
         messages=[{
             "role": "user",
             "content": prompt2
@@ -215,7 +167,7 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     response3 = litellm.completion(
-        model="gemini/gemini-2.5-pro",  # Phase 6 requires web search
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 6 requires web search
         messages=[{
             "role": "user",
             "content": prompt3
@@ -256,7 +208,7 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     response4 = litellm.completion(
-        model="gemini/gemini-2.5-pro",  # Phase 7 requires web search
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 7 requires web search
         messages=[{
             "role": "user",
             "content": prompt4
@@ -295,8 +247,7 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     response5 = litellm.completion(
-        # model="gemini/gemini-2.5-flash",
-        model="cerebras/qwen-3-235b-a22b-thinking-2507",
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",
         messages=[{
             "role": "user",
             "content": prompt5
@@ -305,90 +256,42 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
     )
 
     content5 = response5.choices[0].message.content
-    print(f"Call 5 Response (length: {len(content5)}): {content5[:500]}...\n")
+    print(f"Call 5 Response: {content5}\n")
 
-    # For thinking models, extract the LAST complete JSON array (skip reasoning text)
-    def extract_last_json_array(text):
-        """Extract the last complete JSON array from text (handles thinking models)"""
-        bracket_count = 0
-        json_start = -1
-
-        # Scan backwards to find the last complete JSON array
-        for i in range(len(text) - 1, -1, -1):
-            if text[i] == ']':
-                if bracket_count == 0:
-                    json_end = i + 1
-                bracket_count += 1
-            elif text[i] == '[':
-                bracket_count -= 1
-                if bracket_count == 0:
-                    json_start = i
-                    # Found a complete JSON array, try to parse it
-                    try:
-                        arr = json.loads(text[json_start:json_end])
-                        return arr
-                    except:
-                        continue  # Keep searching backwards
-        return None
+    # Extract JSON array from Call 5
+    start = content5.find('[')
+    end = content5.rfind(']') + 1
 
     try:
-        final_alternatives = extract_last_json_array(content5)
-        if not final_alternatives:
-            raise ValueError("No valid JSON array found")
+        if start >= 0 and end > 0:
+            final_alternatives = json.loads(content5[start:end])
 
-        # Merge all sources and clean/deduplicate (removes invalid/redirect URLs)
-        all_sources = sources_call2 + sources_call3 + sources_call4
-        unique_sources = clean_sources_list(all_sources)
-
-        # Add sources to each alternative if needed
-        for alt in final_alternatives:
-            if 'sources' not in alt:
-                alt['sources'] = unique_sources
-
-        # Validate and fix purchase links
-        final_alternatives = validate_and_fix_purchase_links(final_alternatives)
-
-        return final_alternatives[:5]  # Limit to 5
-    except Exception as e:
-        # Enhanced debugging for Phase 8 failure
-        print(f"{'='*80}")
-        print(f"ERROR: Phase 8 (Final Selection) JSON parsing failed")
-        print(f"{'='*80}")
-        print(f"Exception: {str(e)}")
-        print(f"Response length: {len(content5)} characters")
-        print(f"Last 1000 chars of response: {content5[-1000:]}")
-        print(f"{'='*80}\n")
-        # Switch to Gemini fallback
-        print("Retrying Phase 8 with Gemini...")
-        response5_retry = litellm.completion(
-            model="gemini/gemini-2.5-pro",
-            messages=[{
-                "role": "user",
-                "content": prompt5
-            }]
-        )
-        content5_retry = response5_retry.choices[0].message.content
-        start = content5_retry.find('[')
-        end = content5_retry.rfind(']') + 1
-        try:
-            final_alternatives = json.loads(content5_retry[start:end] if start >= 0 else content5_retry)
-            # Merge sources
+            # Merge all sources and clean/deduplicate (removes invalid/redirect URLs)
             all_sources = sources_call2 + sources_call3 + sources_call4
             unique_sources = clean_sources_list(all_sources)
+
+            # Add sources to each alternative if needed
             for alt in final_alternatives:
                 if 'sources' not in alt:
                     alt['sources'] = unique_sources
+
+            # Validate and fix purchase links
             final_alternatives = validate_and_fix_purchase_links(final_alternatives)
-            return final_alternatives[:5]
-        except:
-            return [{
-                "alternative_name": "Analysis failed",
-                "company": "N/A",
-                "purchase_links": [],
-                "price": "N/A",
-                "warning_level": "Caution",
-                "tags": ["Error"]
-            }]
+
+            return final_alternatives[:5]  # Limit to 5
+        else:
+            return []
+    except Exception as e:
+        print(f"Error parsing final alternatives: {e}")
+        print(f"Raw response content: {content5}")
+        return [{
+            "alternative_name": "Analysis failed",
+            "company": "N/A",
+            "purchase_links": [],
+            "price": "N/A",
+            "warning_level": "Caution",
+            "tags": ["Error"]
+        }]
 
 if __name__ == "__main__":
     # Hard-coded test values

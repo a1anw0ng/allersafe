@@ -6,6 +6,7 @@ import json
 import base64
 import litellm
 import os
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -14,6 +15,43 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import extract_grounding_sources, clean_sources_list
 
 load_dotenv()
+
+def extract_json_from_text(text):
+    """Extract JSON from text that might contain markdown or extra content
+
+    Handles cases like:
+    - Text with JSON object
+    - ```json ... ``` code blocks
+    - Text before and after JSON
+
+    Returns: tuple (json_str, error_message)
+    """
+    # First try to find markdown code block
+    json_block_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+    if json_block_match:
+        return json_block_match.group(1).strip(), None
+
+    # Try to find JSON object by matching braces
+    start = text.find('{')
+    if start < 0:
+        return None, "No JSON object found (no opening brace)"
+
+    # Find matching closing brace
+    brace_count = 0
+    end = start
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            brace_count += 1
+        elif text[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                end = i + 1
+                break
+
+    if brace_count != 0:
+        return None, "Mismatched braces in JSON"
+
+    return text[start:end].strip(), None
 
 def detect_allergens(image_path, allergens, progress_callback=None):
     """Detect allergens in product image using AI with 3-call pattern
@@ -54,7 +92,7 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         prompt1 = f.read().format(allergen_instruction=allergen_instruction)
 
     response1 = litellm.completion(
-        model="gemini/gemini-2.5-pro",  # Phase 1 requires vision support
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 1 requires vision support
         messages=[{
             "role": "user",
             "content": [
@@ -69,13 +107,18 @@ def detect_allergens(image_path, allergens, progress_callback=None):
     content1 = response1.choices[0].message.content
     print(f"Call 1 Response: {content1}\n")
 
-    start = content1.find('{')
-    end = content1.rfind('}') + 1
+    json_str, extract_error = extract_json_from_text(content1)
+    if extract_error:
+        print(f"JSON extraction error in Call 1: {extract_error}")
+        print(f"Full response: {content1}")
+        return {"severity": "Caution", "allergens_detected": [], "warnings": "Image analysis failed - could not parse response", "sources": []}
 
     try:
-        image_analysis = json.loads(content1[start:end] if start >= 0 else content1)
-    except:
-        return {"severity": "Caution", "allergens_detected": [], "warnings": "Image analysis failed", "sources": []}
+        image_analysis = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        print(f"JSON parsing error in Call 1: {e}")
+        print(f"Full response: {content1}")
+        return {"severity": "Caution", "allergens_detected": [], "warnings": "Image analysis failed - invalid JSON format", "sources": []}
 
     # If no product detected, return early
     if not image_analysis.get("is_product", True):
@@ -99,7 +142,7 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         )
 
     response2 = litellm.completion(
-        model="gemini/gemini-2.5-pro",  # Phase 2 requires web search
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 2 requires web search
         messages=[{
             "role": "user",
             "content": prompt2
@@ -113,13 +156,18 @@ def detect_allergens(image_path, allergens, progress_callback=None):
     content2 = response2.choices[0].message.content
     print(f"Call 2 Response: {content2}\n")
 
-    start = content2.find('{')
-    end = content2.rfind('}') + 1
-
-    try:
-        web_research = json.loads(content2[start:end] if start >= 0 else content2)
-    except:
+    json_str, extract_error = extract_json_from_text(content2)
+    if extract_error:
+        print(f"JSON extraction error in Call 2: {extract_error}")
+        print(f"Full response: {content2}")
         web_research = {"complete_ingredients": "not_found", "sources": []}
+    else:
+        try:
+            web_research = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing error in Call 2: {e}")
+            print(f"Full response: {content2}")
+            web_research = {"complete_ingredients": "not_found", "sources": []}
 
     # Extract sources from grounding metadata for Call 2
     sources_call2 = extract_grounding_sources(response2)
@@ -138,8 +186,7 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         )
 
     response3 = litellm.completion(
-        # model="gemini/gemini-2.5-flash",
-        model="cerebras/qwen-3-235b-a22b-thinking-2507",
+        model="openrouter/google/gemini-2.5-flash-preview-09-2025",
         messages=[{
             "role": "user",
             "content": prompt3
@@ -149,36 +196,24 @@ def detect_allergens(image_path, allergens, progress_callback=None):
 
     # Extract JSON from Call 3
     content3 = response3.choices[0].message.content
-    print(f"Call 3 Response (length: {len(content3)}): {content3[:500]}...\n")
+    print(f"Call 3 Response: {content3}\n")
 
-    # For thinking models, extract the LAST complete JSON object (skip reasoning text)
-    def extract_last_json_object(text):
-        """Extract the last complete JSON object from text (handles thinking models)"""
-        brace_count = 0
-        json_start = -1
-
-        # Scan backwards to find the last complete JSON object
-        for i in range(len(text) - 1, -1, -1):
-            if text[i] == '}':
-                if brace_count == 0:
-                    json_end = i + 1
-                brace_count += 1
-            elif text[i] == '{':
-                brace_count -= 1
-                if brace_count == 0:
-                    json_start = i
-                    # Found a complete JSON object, try to parse it
-                    try:
-                        obj = json.loads(text[json_start:json_end])
-                        return obj
-                    except:
-                        continue  # Keep searching backwards
-        return None
+    json_str, extract_error = extract_json_from_text(content3)
+    if extract_error:
+        print(f"JSON extraction error in Call 3: {extract_error}")
+        print(f"Full response: {content3}")
+        return {
+            "severity": "Caution",
+            "allergens_detected": [],
+            "warnings": f"Analysis completed but could not parse response: {extract_error}. Please try again.",
+            "sources": sources_call2 if sources_call2 else []
+        }
 
     try:
-        final_result = extract_last_json_object(content3)
-        if not final_result:
-            raise ValueError("No valid JSON object found")
+        print(f"Attempting to parse JSON (length: {len(json_str)} chars)")
+        print(f"First 200 chars: {json_str[:200]}")
+
+        final_result = json.loads(json_str)
 
         # Merge sources from web research and grounding metadata
         all_sources = sources_call2 if sources_call2 else []
@@ -192,45 +227,25 @@ def detect_allergens(image_path, allergens, progress_callback=None):
 
         final_result['sources'] = unique_sources
         return final_result
+    except json.JSONDecodeError as e:
+        print(f"JSON parsing error in Call 3: {e}")
+        print(f"Error at position {e.pos}: {e.msg}")
+        print(f"Extracted JSON string: {json_str}")
+        return {
+            "severity": "Caution",
+            "allergens_detected": [],
+            "warnings": f"Analysis completed but response has invalid JSON format (error at position {e.pos}: {e.msg}). Please try again.",
+            "sources": sources_call2 if sources_call2 else []
+        }
     except Exception as e:
-        # Enhanced debugging for Phase 3 failure
-        print(f"{'='*80}")
-        print(f"ERROR: Phase 3 (Final Analysis) JSON parsing failed")
-        print(f"{'='*80}")
-        print(f"Exception: {str(e)}")
-        print(f"Response length: {len(content3)} characters")
-        print(f"Last 1000 chars of response: {content3[-1000:]}")
-        print(f"{'='*80}\n")
-        # Switch to Gemini fallback
-        print("Retrying Phase 3 with Gemini...")
-        response3_retry = litellm.completion(
-            model="gemini/gemini-2.5-pro",
-            messages=[{
-                "role": "user",
-                "content": prompt3
-            }]
-        )
-        content3_retry = response3_retry.choices[0].message.content
-        start = content3_retry.find('{')
-        end = content3_retry.rfind('}') + 1
-        try:
-            final_result = json.loads(content3_retry[start:end] if start >= 0 else content3_retry)
-            # Merge sources
-            all_sources = sources_call2 if sources_call2 else []
-            if 'sources' in web_research and web_research['sources']:
-                all_sources.extend(web_research['sources'])
-            if 'sources' in final_result and final_result['sources']:
-                all_sources.extend(final_result['sources'])
-            unique_sources = clean_sources_list(all_sources)
-            final_result['sources'] = unique_sources
-            return final_result
-        except:
-            return {
-                "severity": "Caution",
-                "allergens_detected": [],
-                "warnings": "Final analysis failed",
-                "sources": sources_call2 if sources_call2 else []
-            }
+        print(f"Unexpected error in Call 3: {type(e).__name__}: {e}")
+        print(f"Full response content: {content3}")
+        return {
+            "severity": "Caution",
+            "allergens_detected": [],
+            "warnings": f"Analysis completed but an unexpected error occurred: {type(e).__name__}. Please try again.",
+            "sources": sources_call2 if sources_call2 else []
+        }
 
 if __name__ == "__main__":
     # Hard-coded test values

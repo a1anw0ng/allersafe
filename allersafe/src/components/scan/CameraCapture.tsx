@@ -27,6 +27,10 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
           setStream(mediaStream)
           if (videoRef.current) {
             videoRef.current.srcObject = mediaStream
+            // Ensure video starts playing
+            videoRef.current.play().catch(err => {
+              console.log('Video play failed:', err)
+            })
           }
         })
         .catch((err) => {
@@ -36,6 +40,7 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
     }
   }
 
+  // Initialize camera on mount
   useEffect(() => {
     startCamera()
 
@@ -45,6 +50,16 @@ export function CameraCapture({ onCapture, onCancel, mode }: CameraCaptureProps)
       }
     }
   }, [])
+
+  // Assign stream to video element when stream changes
+  useEffect(() => {
+    if (stream && videoRef.current && !imageUrl) {
+      videoRef.current.srcObject = stream
+      videoRef.current.play().catch(err => {
+        console.log('Video play failed:', err)
+      })
+    }
+  }, [stream, imageUrl])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
