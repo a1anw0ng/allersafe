@@ -340,6 +340,14 @@ async def find_alternatives_endpoint(request: AlternativeFinderRequest):
                 print(f"Warning: Failed to delete temp file {local_image_path}: {e}")
 
 
+@app.options("/api/analyze-product-stream")
+async def analyze_product_stream_options():
+    """Handle CORS preflight for streaming endpoint"""
+    return {
+        "message": "OK"
+    }
+
+
 @app.post("/api/analyze-product-stream")
 async def analyze_product_stream(request: ProductAnalysisRequest):
     """
