@@ -9,6 +9,9 @@ import { hasCompletedProfile } from '@/lib/profileChecker'
 export default function GroceriesScanPage() {
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
+  const [currentPhase, setCurrentPhase] = useState(0)
+  const [phaseMessage, setPhaseMessage] = useState('Preparing analysis...')
+  const [totalPhases, setTotalPhases] = useState(8)
 
   // Safety check: redirect to profile if not completed
   useEffect(() => {
@@ -19,21 +22,23 @@ export default function GroceriesScanPage() {
 
   const handleImageCapture = async (s3Url: string) => {
     setIsProcessing(true)
+    setCurrentPhase(0)
+    setPhaseMessage('Preparing analysis...')
 
     try {
       // Get allergy profile data as array
       const allergyProfile = getAllergyNames()
 
       // Console log the data for backend processing
-      console.log('=== GROCERY SCAN DATA ===')
+      console.log('=== GROCERY SCAN DATA (SSE) ===')
       console.log({
         s3_image_url: s3Url,
         allergy_profile: allergyProfile
       })
-      console.log('========================')
+      console.log('===============================')
 
-      // Call backend API to detect allergens
-      const detectResponse = await fetch('http://localhost:8000/api/detect-allergens', {
+      // Use SSE endpoint for real-time phase updates
+      const response = await fetch('http://localhost:8000/api/analyze-product-stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -44,14 +49,94 @@ export default function GroceriesScanPage() {
         })
       })
 
-      if (!detectResponse.ok) {
-        throw new Error('Failed to analyze product')
+      if (!response.ok) {
+        throw new Error('Failed to start analysis')
       }
 
-      const detectResult = await detectResponse.json()
-      console.log('=== ALLERGEN DETECTION RESPONSE ===')
-      console.log(detectResult)
-      console.log('===================================')
+      // Read SSE stream
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      let result: any = null
+      let buffer = '' // Accumulate data across chunk boundaries
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+
+          if (done) break
+
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true })
+
+          // SSE format: "data: {json}\n\n" - messages end with double newline
+          // Split on double newline to get complete messages
+          const messages = buffer.split('\n\n')
+
+          // Last element might be incomplete, keep it in buffer
+          buffer = messages.pop() || ''
+
+          // Process complete messages
+          for (const message of messages) {
+            const lines = message.split('\n')
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const jsonData = line.substring(6) // Remove "data: " prefix
+
+                try {
+                  const event = JSON.parse(jsonData)
+
+                  if (event.type === 'phase') {
+                    // Update phase progress
+                    setCurrentPhase(event.phase)
+                    setPhaseMessage(event.message)
+                    setTotalPhases(event.total)
+                    console.log(`Phase ${event.phase}/${event.total}: ${event.message}`)
+                  } else if (event.type === 'result') {
+                    // Store final result
+                    result = event.data
+                    console.log('=== ANALYSIS COMPLETE ===')
+                    console.log(result)
+                    console.log('========================')
+                  } else if (event.type === 'error') {
+                    throw new Error(event.message)
+                  }
+                } catch (parseError) {
+                  console.error('Parse error:', parseError, 'for data:', jsonData)
+                }
+              }
+            }
+          }
+        }
+
+        // Process any remaining data in buffer
+        if (buffer.trim()) {
+          const lines = buffer.split('\n')
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonData = line.substring(6)
+              try {
+                const event = JSON.parse(jsonData)
+                if (event.type === 'result') {
+                  result = event.data
+                  console.log('=== ANALYSIS COMPLETE (from buffer) ===')
+                  console.log(result)
+                }
+              } catch (parseError) {
+                console.error('Final buffer parse error:', parseError)
+              }
+            }
+          }
+        }
+      }
+
+      if (!result) {
+        throw new Error('No result received from analysis')
+      }
+
+      const detectResult = result.allergen_analysis
+      const alternativesData = result.alternatives || []
 
       // Check if no product was detected
       const noProductDetected =
@@ -68,29 +153,9 @@ export default function GroceriesScanPage() {
         return
       }
 
-      // Call backend API to find alternatives
-      const alternativesResponse = await fetch('http://localhost:8000/api/find-alternatives', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          s3_image_url: s3Url,
-          allergens: allergyProfile
-        })
-      })
-
-      let alternativesData = []
-      if (alternativesResponse.ok) {
-        const alternativesResult = await alternativesResponse.json()
-        console.log('=== ALTERNATIVES RESPONSE ===')
-        console.log(alternativesResult)
-        console.log('=============================')
-        alternativesData = alternativesResult.alternatives || []
-      }
-
-      // Store alternatives in sessionStorage (too large for URL params)
+      // Store alternatives and sources in sessionStorage (too large for URL params)
       sessionStorage.setItem('alternativesData', JSON.stringify(alternativesData))
+      sessionStorage.setItem('allergenSources', JSON.stringify(detectResult.sources || []))
 
       // Navigate to alternatives page with detection results
       const params = new URLSearchParams({
@@ -115,11 +180,48 @@ export default function GroceriesScanPage() {
   return (
     <div className="fixed inset-0 bg-white">
       {isProcessing ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto mb-4"></div>
-            <p className="text-gray-800 text-lg">Analyzing product</p>
-            <p className="text-gray-500 text-sm mt-2">Checking ingredients and dietary restrictions</p>
+        <div className="flex items-center justify-center h-full px-6">
+          <div className="text-center max-w-md w-full">
+            {/* Spinner */}
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500 mx-auto mb-6"></div>
+
+            {/* Phase Title */}
+            <p className="text-gray-800 text-xl font-semibold mb-2">Analyzing Product</p>
+
+            {/* Current Phase Message */}
+            <p className="text-green-600 text-base font-medium mb-4">{phaseMessage}</p>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+              <div
+                className="bg-green-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${(currentPhase / totalPhases) * 100}%` }}
+              ></div>
+            </div>
+
+            {/* Phase Counter */}
+            <p className="text-gray-500 text-sm">
+              Phase {currentPhase} of {totalPhases}
+            </p>
+
+            {/* Phase Details (optional) */}
+            <div className="mt-6 text-left">
+              <p className="text-gray-600 text-xs mb-2">What we're doing:</p>
+              <ul className="text-gray-500 text-xs space-y-1">
+                <li className={currentPhase >= 1 ? 'text-green-600 font-medium' : ''}>
+                  {currentPhase > 3 ? '✓' : currentPhase >= 1 ? '•' : '○'} Analyzing ingredients
+                </li>
+                <li className={currentPhase >= 4 ? 'text-green-600 font-medium' : ''}>
+                  {currentPhase > 5 ? '✓' : currentPhase >= 4 ? '•' : '○'} Finding safe alternatives
+                </li>
+                <li className={currentPhase >= 6 ? 'text-green-600 font-medium' : ''}>
+                  {currentPhase > 7 ? '✓' : currentPhase >= 6 ? '•' : '○'} Verifying safety
+                </li>
+                <li className={currentPhase >= 8 ? 'text-green-600 font-medium' : ''}>
+                  {currentPhase >= 8 ? '✓' : '○'} Finalizing results
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       ) : (

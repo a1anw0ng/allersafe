@@ -13,6 +13,7 @@ interface Alternative {
   safetyRating: 'safe' | 'caution' | 'unsafe'
   allergenFree: string[]
   storeLinks: { store: string; url: string; price: string }[]
+  reasoning?: string
 }
 
 const mockAlternatives: Alternative[] = [
@@ -57,6 +58,65 @@ const mockAlternatives: Alternative[] = [
   },
 ]
 
+// Component to render formatted warnings text
+function FormattedWarnings({ text, sources }: { text: string, sources: Array<{title: string, url: string}> }) {
+  if (!text) return null
+
+  // Split into lines and process each
+  const lines = text.split('\n').filter(line => line.trim())
+
+  return (
+    <div className="text-sm space-y-2">
+      {lines.map((line, idx) => {
+        // Handle bold text (between **)
+        const parts = line.split(/(\*\*.*?\*\*)/g)
+        const processedLine = parts.map((part, i) => {
+          if (part.startsWith('**') && part.endsWith('**')) {
+            return <strong key={i}>{part.slice(2, -2)}</strong>
+          }
+          // Convert inline citations [1] to styled superscripts (non-clickable)
+          const citationParts = part.split(/(\[\d+\])/g)
+          return citationParts.map((citePart, j) => {
+            const match = citePart.match(/\[(\d+)\]/)
+            if (match) {
+              const num = match[1]
+              return (
+                <sup key={`${i}-${j}`} className="text-gray-600 font-medium mx-0.5">
+                  [{num}]
+                </sup>
+              )
+            }
+            return <span key={`${i}-${j}`}>{citePart}</span>
+          })
+        })
+
+        return (
+          <p key={idx} className="leading-relaxed">
+            {processedLine}
+          </p>
+        )
+      })}
+
+      {/* Sources section - non-clickable text */}
+      {sources && sources.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <p className="font-semibold text-xs uppercase text-gray-600 mb-2">Sources</p>
+          <ol className="text-xs space-y-1">
+            {sources.map((source, idx) => (
+              <li key={idx} className="flex">
+                <span className="font-medium mr-2">[{idx + 1}]</span>
+                <span className="text-gray-700 flex-1 break-all">
+                  {source.title || source.url}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AlternativesPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -64,6 +124,7 @@ export default function AlternativesPage() {
   const [severity, setSeverity] = useState<string>('Safe')
   const [allergensDetected, setAllergensDetected] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string>('')
+  const [sources, setSources] = useState<Array<{title: string, url: string}>>([])
   const [hasError, setHasError] = useState(false)
   const [showWarnings, setShowWarnings] = useState(false)
   const [filteredAlternatives, setFilteredAlternatives] = useState<Alternative[]>(
@@ -91,6 +152,18 @@ export default function AlternativesPage() {
         setAllergensDetected(Array.isArray(parsed) ? parsed : [])
       } catch {
         setAllergensDetected([])
+      }
+    }
+
+    // Read sources from sessionStorage
+    const sourcesJson = sessionStorage.getItem('allergenSources')
+    if (sourcesJson) {
+      try {
+        const parsedSources = JSON.parse(sourcesJson)
+        setSources(Array.isArray(parsedSources) ? parsedSources : [])
+      } catch (error) {
+        console.error('Error parsing sources data:', error)
+        setSources([])
       }
     }
 
@@ -122,11 +195,12 @@ export default function AlternativesPage() {
             id: `alt-${index}`,
             name: alt.alternative_name || 'Unknown Product',
             brand: alt.company || 'Unknown Brand',
-            image: '/api/placeholder/200/200',
+            image: '',
             price: alt.price || 'N/A',
             safetyRating: (alt.warning_level?.toLowerCase() || 'safe') as 'safe' | 'caution' | 'unsafe',
             allergenFree: alt.tags || [],
-            storeLinks: storeLinks
+            storeLinks: storeLinks,
+            reasoning: alt.reasoning
           }
         })
 
@@ -158,9 +232,9 @@ export default function AlternativesPage() {
         </div>
       </div>
 
-      <div className="px-4 py-6">
+      <div className="px-4 py-3">
         {hasError ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
             <div className="flex items-start">
               <svg className="w-5 h-5 text-red-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -172,7 +246,7 @@ export default function AlternativesPage() {
             </div>
           </div>
         ) : severity === 'Safe' ? (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
             <div className="flex items-start">
               <svg className="w-5 h-5 text-green-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -191,14 +265,18 @@ export default function AlternativesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    {showWarnings && <p className="text-green-600 text-sm mt-2 italic">{warnings}</p>}
+                    {showWarnings && (
+                      <div className="text-green-700 mt-3 p-3 bg-green-50 rounded">
+                        <FormattedWarnings text={warnings} sources={sources} />
+                      </div>
+                    )}
                   </>
                 )}
               </div>
             </div>
           </div>
         ) : severity === 'Caution' ? (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
             <div className="flex items-start">
               <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -221,14 +299,18 @@ export default function AlternativesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    {showWarnings && <p className="text-yellow-600 text-sm mt-2 italic">{warnings}</p>}
+                    {showWarnings && (
+                      <div className="text-yellow-800 mt-3 p-3 bg-yellow-50 rounded">
+                        <FormattedWarnings text={warnings} sources={sources} />
+                      </div>
+                    )}
                   </>
                 )}
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
             <div className="flex items-start">
               <svg className="w-5 h-5 text-red-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -251,7 +333,11 @@ export default function AlternativesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
-                    {showWarnings && <p className="text-red-600 text-sm mt-2 italic">{warnings}</p>}
+                    {showWarnings && (
+                      <div className="text-red-800 mt-3 p-3 bg-red-50 rounded">
+                        <FormattedWarnings text={warnings} sources={sources} />
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -259,8 +345,8 @@ export default function AlternativesPage() {
           </div>
         )}
 
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+        <div className="mb-3">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">
             {filteredAlternatives.length > 0
               ? `${filteredAlternatives.length} Safe Alternative${filteredAlternatives.length !== 1 ? 's' : ''} Found`
               : 'Looking for Alternatives'
@@ -273,7 +359,7 @@ export default function AlternativesPage() {
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filteredAlternatives.map((alternative) => (
             <ProductCard key={alternative.id} product={alternative} />
           ))}
