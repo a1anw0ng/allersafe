@@ -435,7 +435,11 @@ async def analyze_product_stream(request: ProductAnalysisRequest):
             executor = ThreadPoolExecutor(max_workers=1)
             future = executor.submit(run_analysis_with_callbacks)
 
-            # Stream progress updates from queue
+            # Stream progress updates from queue with keepalive
+            import time
+            last_keepalive = time.time()
+            keepalive_interval = 15  # Send keepalive every 15 seconds
+
             while not future.done():
                 try:
                     # Check queue for updates (non-blocking with timeout)
@@ -447,9 +451,14 @@ async def analyze_product_stream(request: ProductAnalysisRequest):
                     else:
                         # Emit phase update
                         yield f"data: {json.dumps({'type': 'phase', 'phase': update['phase'], 'message': update['message'], 'total': 8})}\n\n"
+                        last_keepalive = time.time()  # Reset keepalive timer
                         await asyncio.sleep(0.05)  # Small delay to prevent overwhelming client
                 except queue.Empty:
-                    # No update available, continue waiting
+                    # No update available
+                    # Send keepalive ping if it's been too long
+                    if time.time() - last_keepalive > keepalive_interval:
+                        yield f": keepalive\n\n"  # SSE comment (keeps connection alive)
+                        last_keepalive = time.time()
                     await asyncio.sleep(0.1)
 
             # Check for any remaining updates in queue
