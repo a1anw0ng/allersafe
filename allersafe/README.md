@@ -4,12 +4,19 @@ AllerSafe helps people with dietary restrictions and allergies find safe food al
 
 ## Features
 
-- **Product Scanner**: Scan grocery items to find safe alternatives
+### Currently Implemented
+- **Product Scanner**: Scan grocery items to detect allergens in real-time
+- **Alternative Finder**: Get AI-powered safe alternative recommendations
+- **Streaming Analysis**: Live progress updates during 8-phase analysis
+- **Safety Ratings**: Clear severity indicators (Safe/Caution/Dangerous)
+- **Shopping Links**: Direct purchase links for alternative products
+- **Source Citations**: Web sources for all allergen and alternative information
+- **Personalized Profiles**: Save dietary restrictions and allergen list
+
+### In Development
 - **Restaurant Finder**: Scan meals to discover safe dining options
-- **Personalized Profiles**: Save your dietary restrictions and allergies
-- **Shopping Links**: Direct links to purchase alternatives online
 - **Map Integration**: Find nearby restaurants that accommodate your needs
-- **Safety Ratings**: Clear indicators for safe, caution, and unsafe options
+- **Offline Mode**: Cached product database for offline scanning
 
 ## Getting Started
 
@@ -30,15 +37,14 @@ cd allersafe
 npm install
 ```
 
-3. Set up environment variables:
+3. Set up environment variables in `.env.local`:
 ```bash
-cp .env.example .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_AWS_S3_BUCKET_NAME=your_bucket_name
+NEXT_PUBLIC_AWS_REGION=us-east-2
 ```
 
-4. Fill in your API keys in `.env.local`:
-   - OpenAI API Key (for image recognition)
-   - Google Maps API Key (for restaurant locations)
-   - Google Places API Key (for restaurant data)
+**Note**: The frontend connects to the FastAPI backend for all AI processing. No direct AI API keys are needed in the frontend.
 
 ### Running the Development Server
 
@@ -65,28 +71,47 @@ src/
 └── types/              # TypeScript type definitions
 ```
 
-## Security Notice
-
-⚠️ **IMPORTANT**: The OpenAI API key in the parent directory's `.env` file is exposed and should be regenerated immediately. Never commit API keys to version control.
-
 ## Technologies Used
 
 - **Next.js 14**: React framework with App Router
 - **TypeScript**: Type-safe development
 - **Tailwind CSS**: Utility-first CSS framework
 - **Zustand**: Lightweight state management
+- **Sharp**: Image optimization and processing
+- **Server-Sent Events (SSE)**: Real-time streaming from backend
+- **AWS S3**: Image upload and storage
 - **PWA Ready**: Mobile-optimized responsive design
+
+## Backend Integration
+
+The frontend communicates with the FastAPI backend at `NEXT_PUBLIC_API_URL`:
+
+**Primary Endpoint**: `POST /api/analyze-product-stream`
+- Streams real-time analysis progress using Server-Sent Events
+- Returns phase-by-phase updates during 8-phase pipeline
+- Includes allergen detection results and alternative recommendations
+
+**Image Upload Flow**:
+1. User captures/uploads image
+2. Frontend uploads to AWS S3
+3. S3 URL sent to backend for analysis
+4. Backend downloads from S3 and processes with AI
+5. Results streamed back to frontend
 
 ## Features Roadmap
 
-- [ ] Real API integration for product identification
+- [x] Real API integration with FastAPI backend
+- [x] Product allergen detection with AI
+- [x] Safe alternative recommendations
+- [x] AWS S3 image storage
+- [x] Real-time streaming analysis
 - [ ] User authentication with NextAuth.js
-- [ ] Database integration for user data
-- [ ] Real-time restaurant data from Google Places
+- [ ] Database integration for user history
+- [ ] Restaurant finder with location data
 - [ ] Barcode scanning capability
-- [ ] Social features (share safe products/restaurants)
-- [ ] Offline mode with cached data
-- [ ] Push notifications for nearby safe options
+- [ ] Social features (share safe products)
+- [ ] Offline mode with cached products
+- [ ] Push notifications for alerts
 
 ## Contributing
 

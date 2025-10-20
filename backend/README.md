@@ -4,11 +4,14 @@ FastAPI-based backend service for food allergy detection and safe alternative fi
 
 ## Features
 
-- 🔍 **Allergen Detection**: Analyze product images for specific allergens using AI
+- 🔍 **8-Phase Analysis Pipeline**: Comprehensive allergen detection + alternative finding
+- 🌐 **Web Search Integration**: Real-time verification via Gemini 2.5 Flash with grounding
+- 📡 **Streaming Support**: Server-sent events for real-time progress updates
 - 🐳 **Dockerized**: Easy deployment with Docker and Docker Compose
 - 🚀 **FastAPI**: High-performance async API
 - ☁️ **S3 Integration**: Direct image download from AWS S3
 - 📝 **Auto-documentation**: Interactive API docs at `/docs`
+- 🧪 **Evaluation Framework**: Built-in testing system with comprehensive metrics
 
 ## Quick Start
 
@@ -16,7 +19,7 @@ FastAPI-based backend service for food allergy detection and safe alternative fi
 
 1. **Ensure `.env` file exists** with required variables:
    ```env
-   GEMINI_API_KEY=your_gemini_api_key
+   OPENROUTER_API_KEY=your_openrouter_api_key
    AWS_ACCESS_KEY_ID=your_aws_access_key
    AWS_SECRET_ACCESS_KEY=your_aws_secret_key
    AWS_REGION=us-east-2
@@ -57,9 +60,55 @@ docker run -p 8000:8000 --env-file .env allersafe-backend
 
 ## API Endpoints
 
+### POST `/api/analyze-product-stream` (Primary Endpoint)
+
+Full 8-phase analysis with Server-Sent Events streaming for real-time progress updates.
+
+**Request Body:**
+```json
+{
+  "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
+  "allergens": ["Milk", "Peanuts", "Eggs"]
+}
+```
+
+**Response:** SSE stream of JSON events
+```json
+{"phase": 1, "status": "Processing", "message": "Analyzing image..."}
+{"phase": 3, "status": "Complete", "data": {...}}
+{"phase": 8, "status": "Complete", "data": {"alternatives": [...]}}
+```
+
+### POST `/api/analyze-product`
+
+Full 8-phase analysis without streaming (returns complete result).
+
+**Request Body:** Same as above
+
+**Response:**
+```json
+{
+  "severity": "Safe|Caution|Dangerous|NotDetected",
+  "allergens_detected": ["Milk"],
+  "warnings": "Detailed explanation",
+  "sources": [{"title": "...", "url": "..."}],
+  "alternatives": [
+    {
+      "alternative_name": "Safe Product",
+      "company": "Brand Name",
+      "purchase_links": ["https://..."],
+      "price": "$5.99 USD",
+      "warning_level": "Safe",
+      "tags": ["dairy-free", "nut-free"],
+      "reasoning": "..."
+    }
+  ]
+}
+```
+
 ### POST `/api/detect-allergens`
 
-Detect allergens in a product image from S3.
+Allergen detection only (Phases 1-3), no alternatives.
 
 **Request Body:**
 ```json
@@ -72,9 +121,40 @@ Detect allergens in a product image from S3.
 **Response:**
 ```json
 {
-  "severity": "Safe|Caution|Dangerous",
+  "severity": "Safe|Caution|Dangerous|NotDetected",
   "allergens_detected": ["Milk"],
-  "warnings": "Detailed explanation of the analysis"
+  "warnings": "Detailed explanation",
+  "sources": [{"title": "Product Info", "url": "https://..."}]
+}
+```
+
+### POST `/api/find-alternatives`
+
+Alternative finding only (Phases 4-8), requires product info from detection.
+
+**Request Body:**
+```json
+{
+  "product_name": "Reese's Peanut Butter Cups",
+  "allergens_to_avoid": ["peanuts", "dairy"],
+  "product_category": "snack"
+}
+```
+
+**Response:**
+```json
+{
+  "alternatives": [
+    {
+      "alternative_name": "SunButter Cups",
+      "company": "SunButter",
+      "purchase_links": ["https://amazon.com/..."],
+      "price": "$6.99 USD",
+      "warning_level": "Safe",
+      "tags": ["peanut-free", "dairy-free"],
+      "reasoning": "Made with sunflower seed butter..."
+    }
+  ]
 }
 ```
 
@@ -89,6 +169,20 @@ Health check endpoint for monitoring.
   "service": "allersafe-backend"
 }
 ```
+
+## 8-Phase Pipeline Architecture
+
+**Phases 1-3: Allergen Detection**
+1. **Visual Analysis** - Extract ingredients from product image
+2. **Web Verification** - Search for product information online
+3. **Final Assessment** - Determine severity and allergen presence
+
+**Phases 4-8: Alternative Finding**
+4. **Categorization** - Identify product category and type
+5. **General Search** - Find alternatives in same category
+6. **Brand Search** - Find specific brand alternatives
+7. **Store Search** - Find where to buy alternatives
+8. **Ranking** - Sort and filter best alternatives
 
 ## Docker Commands
 
@@ -113,28 +207,37 @@ docker-compose down -v
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `GEMINI_API_KEY` | Google Gemini API key for AI analysis | Yes |
-| `AWS_ACCESS_KEY_ID` | AWS access key for S3 | Yes |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key for S3 | Yes |
+| `OPENROUTER_API_KEY` | OpenRouter API key for Gemini 2.5 Flash access | Yes |
+| `AWS_ACCESS_KEY_ID` | AWS access key for S3 image storage | Yes |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key for S3 image storage | Yes |
 | `AWS_REGION` | AWS region (e.g., us-east-2) | Yes |
-| `AWS_S3_BUCKET_NAME` | S3 bucket name | Yes |
+| `AWS_S3_BUCKET_NAME` | S3 bucket name for image uploads | Yes |
 
 ## Project Structure
 
 ```
 backend/
-├── main.py                      # FastAPI application
+├── main.py                      # FastAPI application with all endpoints
+├── product_analyzer.py          # Full 8-phase pipeline orchestrator
+├── utils.py                     # Shared utilities and source extraction
 ├── requirements.txt             # Python dependencies
 ├── Dockerfile                   # Docker image definition
 ├── docker-compose.yml          # Docker Compose configuration
-├── .dockerignore               # Docker build exclusions
 ├── .env                        # Environment variables (not in git)
 ├── allergen_detector/
-│   ├── allergen_detector.py    # Allergen detection logic
-│   └── allergen_prompt.md      # AI prompt template
-└── alternative_finder/
-    ├── alternative_finder.py   # Alternative product finder
-    └── alternative_prompt.md   # AI prompt template
+│   ├── allergen_detector.py    # Phases 1-3: Allergen detection
+│   └── allergen_prompt.md      # AI prompt templates
+├── alternative_finder/
+│   ├── alternative_finder.py   # Phases 4-8: Alternative finding
+│   ├── alternative_prompt.md   # AI prompt templates
+│   └── README.md               # Alternative finder documentation
+└── evaluation/
+    ├── run_evaluation.py       # Test runner
+    ├── metrics.py              # Metrics calculation
+    ├── report_generator.py     # Report generation
+    ├── test_cases.json         # Test dataset
+    ├── test_images/            # Test images
+    └── README.md               # Evaluation documentation
 ```
 
 ## Testing the API
@@ -145,7 +248,15 @@ backend/
 # Health check
 curl http://localhost:8000/health
 
-# Detect allergens
+# Full analysis (non-streaming)
+curl -X POST http://localhost:8000/api/analyze-product \
+  -H "Content-Type: application/json" \
+  -d '{
+    "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
+    "allergens": ["Milk", "Peanuts"]
+  }'
+
+# Allergen detection only
 curl -X POST http://localhost:8000/api/detect-allergens \
   -H "Content-Type: application/json" \
   -d '{
@@ -159,8 +270,9 @@ curl -X POST http://localhost:8000/api/detect-allergens \
 ```python
 import requests
 
+# Full analysis
 response = requests.post(
-    "http://localhost:8000/api/detect-allergens",
+    "http://localhost:8000/api/analyze-product",
     json={
         "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
         "allergens": ["Milk", "Peanuts", "Eggs"]
@@ -168,7 +280,38 @@ response = requests.post(
 )
 
 print(response.json())
+
+# Streaming analysis (SSE)
+import sseclient
+
+response = requests.post(
+    "http://localhost:8000/api/analyze-product-stream",
+    json={
+        "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
+        "allergens": ["Milk", "Peanuts"]
+    },
+    stream=True
+)
+
+client = sseclient.SSEClient(response)
+for event in client.events():
+    print(event.data)
 ```
+
+## Running Evaluation Tests
+
+```bash
+# Run all evaluation tests
+python -m evaluation.run_evaluation --verbose
+
+# Run specific test
+python -m evaluation.run_evaluation --test-id 001
+
+# Save results to file
+python -m evaluation.run_evaluation --output results.json
+```
+
+See [evaluation/README.md](./evaluation/README.md) for detailed testing documentation.
 
 ## Production Deployment
 
