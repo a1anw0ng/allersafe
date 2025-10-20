@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created_date": "2025-10-19",
+    "description": "Evaluation test cases for AllerSafe allergen detection and alternative finding",
+    "total_cases": 6
+  },
+  "test_cases": [
+    {
+      "test_id": "001",
+      "name": "Dangerous - Contains user allergens",
+      "description": "Product that contains allergens the user is allergic to",
+      "image_path": "evaluation/test_images/dangerous_product.jpg",
+      "user_allergens": ["peanuts", "dairy"],
+      "ground_truth": {
+        "severity": "Dangerous",
+        "allergens_detected": ["peanuts", "dairy"],
+        "contains_product": true,
+        "product_category": "snack",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": ["peanuts", "dairy"]
+        }
+      }
+    },
+    {
+      "test_id": "002",
+      "name": "Safe - No allergens detected",
+      "description": "Product that does not contain user's allergens",
+      "image_path": "evaluation/test_images/safe_product.jpg",
+      "user_allergens": ["shellfish", "soy"],
+      "ground_truth": {
+        "severity": "Safe",
+        "allergens_detected": [],
+        "contains_product": true,
+        "product_category": "beverage",
+        "alternatives": {
+          "min_count": 0,
+          "should_be_safe": true,
+          "should_avoid_allergens": []
+        }
+      }
+    },
+    {
+      "test_id": "003",
+      "name": "Caution - May contain warning",
+      "description": "Product with 'may contain' warning for user's allergen",
+      "image_path": "evaluation/test_images/caution_product.jpg",
+      "user_allergens": ["tree nuts"],
+      "ground_truth": {
+        "severity": "Caution",
+        "allergens_detected": [],
+        "contains_product": true,
+        "product_category": "snack",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": ["tree nuts"]
+        }
+      }
+    },
+    {
+      "test_id": "004",
+      "name": "NotDetected - No product in image",
+      "description": "Image that does not contain a food product",
+      "image_path": "evaluation/test_images/non_product.jpg",
+      "user_allergens": ["dairy", "eggs"],
+      "ground_truth": {
+        "severity": "NotDetected",
+        "allergens_detected": [],
+        "contains_product": false,
+        "product_category": null,
+        "alternatives": {
+          "min_count": 0,
+          "should_be_safe": null,
+          "should_avoid_allergens": []
+        }
+      }
+    },
+    {
+      "test_id": "005",
+      "name": "Dangerous - Multiple allergens (partial match)",
+      "description": "Product containing only some of user's allergens",
+      "image_path": "evaluation/test_images/dairy_product.jpg",
+      "user_allergens": ["dairy", "eggs", "soy"],
+      "ground_truth": {
+        "severity": "Dangerous",
+        "allergens_detected": ["dairy"],
+        "contains_product": true,
+        "product_category": "dairy",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": ["dairy", "eggs", "soy"]
+        }
+      }
+    },
+    {
+      "test_id": "006",
+      "name": "Dangerous - Hidden allergens in ingredients",
+      "description": "Product with allergens in ingredient derivatives (whey = dairy)",
+      "image_path": "evaluation/test_images/hidden_allergen.jpg",
+      "user_allergens": ["dairy"],
+      "ground_truth": {
+        "severity": "Dangerous",
+        "allergens_detected": ["dairy"],
+        "contains_product": true,
+        "product_category": "snack",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": ["dairy"]
+        }
+      }
+    }
+  ]
+}

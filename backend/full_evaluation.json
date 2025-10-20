@@ -1,0 +1,1012 @@
+{
+  "metadata": {
+    "test_cases_file": "evaluation/test_cases.json",
+    "total_tests": 6,
+    "timestamp": "2025-10-19 22:46:11"
+  },
+  "metrics": {
+    "summary": {
+      "total_tests": 6,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "pass_rate_percent": 100.0
+    },
+    "allergen_detection": {
+      "severity_accuracy_percent": 100.0,
+      "allergen_precision_percent": 80.0,
+      "allergen_recall_percent": 100.0,
+      "allergen_f1_score": 88.89,
+      "false_negative_rate_percent": 0.0,
+      "confusion_matrix": {
+        "Safe": {
+          "Safe": 1,
+          "Caution": 0,
+          "Dangerous": 0,
+          "NotDetected": 0
+        },
+        "Caution": {
+          "Safe": 0,
+          "Caution": 1,
+          "Dangerous": 0,
+          "NotDetected": 0
+        },
+        "Dangerous": {
+          "Safe": 0,
+          "Caution": 0,
+          "Dangerous": 3,
+          "NotDetected": 0
+        },
+        "NotDetected": {
+          "Safe": 0,
+          "Caution": 0,
+          "Dangerous": 0,
+          "NotDetected": 1
+        }
+      },
+      "true_positives": 4,
+      "false_positives": 1,
+      "false_negatives": 0
+    },
+    "alternatives": {
+      "average_alternatives_found": 5.0,
+      "coverage_percent": 166.67,
+      "total_alternatives_found": 20,
+      "safe_alternatives": 18,
+      "alternatives_verified_safe": 19,
+      "alternatives_failed_verification": 1,
+      "safety_verification_rate_percent": 95.0
+    },
+    "performance": {
+      "average_latency_seconds": 52.14,
+      "min_latency_seconds": 3.01,
+      "max_latency_seconds": 69.62,
+      "total_time_seconds": 312.85
+    },
+    "costs": {
+      "total_input_tokens": 30000,
+      "total_output_tokens": 12000,
+      "total_tokens": 42000,
+      "total_cost_usd": 0.039,
+      "average_cost_per_test_usd": 0.0065,
+      "per_test_breakdown": [
+        {
+          "test_id": "001",
+          "input_tokens": 5000,
+          "output_tokens": 2000,
+          "cost_usd": 0.0065
+        },
+        {
+          "test_id": "002",
+          "input_tokens": 5000,
+          "output_tokens": 2000,
+          "cost_usd": 0.0065
+        },
+        {
+          "test_id": "003",
+          "input_tokens": 5000,
+          "output_tokens": 2000,
+          "cost_usd": 0.0065
+        },
+        {
+          "test_id": "004",
+          "input_tokens": 5000,
+          "output_tokens": 2000,
+          "cost_usd": 0.0065
+        },
+        {
+          "test_id": "005",
+          "input_tokens": 5000,
+          "output_tokens": 2000,
+          "cost_usd": 0.0065
+        },
+        {
+          "test_id": "006",
+          "input_tokens": 5000,
+          "output_tokens": 2000,
+          "cost_usd": 0.0065
+        }
+      ]
+    },
+    "failures": [
+      {
+        "test_id": "001",
+        "type": "alternative_contains_allergen",
+        "severity": "CRITICAL",
+        "message": "Alternative may contain avoided allergens: ['peanuts', 'dairy']",
+        "alternative_name": "No Whey! Foods Milkless Peanut Butter Cups",
+        "company": "No Whey! Foods",
+        "found_allergens": [
+          "peanuts",
+          "dairy"
+        ],
+        "avoid_allergens": [
+          "peanuts",
+          "dairy"
+        ]
+      },
+      {
+        "test_id": "005",
+        "type": "unsafe_alternative",
+        "severity": "HIGH",
+        "message": "2 alternatives not marked as Safe",
+        "unsafe_products": [
+          "Miyoko's Kitchen Cultured Vegan Roadhouse Cheddar Style Block",
+          "Miyoko's Kitchen Cultured Vegan Moxarella Style Block"
+        ]
+      }
+    ]
+  },
+  "test_results": [
+    {
+      "test_id": "001",
+      "status": "success",
+      "predictions": {
+        "severity": "Dangerous",
+        "allergens_detected": [
+          "peanuts",
+          "dairy"
+        ],
+        "alternatives_count": 5
+      },
+      "ground_truth": {
+        "severity": "Dangerous",
+        "allergens_detected": [
+          "peanuts",
+          "dairy"
+        ],
+        "contains_product": true,
+        "product_category": "snack",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": [
+            "peanuts",
+            "dairy"
+          ]
+        }
+      },
+      "correct": {
+        "severity": true,
+        "allergens": true
+      },
+      "latency_seconds": 59.36,
+      "full_result": {
+        "allergen_analysis": {
+          "severity": "Dangerous",
+          "allergens_detected": [
+            "peanuts",
+            "dairy"
+          ],
+          "warnings": "**Product Identified:** Peanut Butter Cups Pantry Pack 25 Cups Snack Size\n\n**Safety Status:** Dangerous for individuals with peanut and dairy allergies\n\n**Analysis:**\n\n\u2022 **Peanuts:** This product uses peanuts as a primary, intentional ingredient, listed outright in the component breakdown [1]. The manufacturer explicitly declares Peanuts as a major food allergen on the product label [1]. Consumption of this product will result in direct exposure.\n\n\u2022 **Dairy:** Dairy is present intentionally, listed as Milk, Skim Milk, Milk Fat, and Lactose within the milk chocolate coating [1]. It is also declared as a major food allergen (Milk) on the product packaging [1]. Consumption of this product will result in direct exposure to multiple dairy components.\n\n**Conclusion:** This product is classified as Dangerous. It contains both peanuts and dairy (milk) as primary, intentional ingredients that are essential components of the product, verified by the complete ingredient list and allergen declarations [1]. This product is NOT SAFE and must be avoided by individuals with peanut and dairy allergies.\n",
+          "product_name": "Peanut Butter Cups Pantry Pack 25 Cups Snack Size",
+          "sources": []
+        },
+        "alternatives": [
+          {
+            "alternative_name": "Free2b Sunflower Seed Butter Cups - Dark Chocolate",
+            "company": "Free2b Foods",
+            "image_url": "https://m.media-amazon.com/images/I/71p0g0i95LL.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Free2b+Sunflower+Seed+Butter+Cups+-+Dark+Chocolate",
+              "https://www.walmart.com/search?q=Free2b+Sunflower+Seed+Butter+Cups+-+Dark+Chocolate",
+              "https://www.target.com/s?searchTerm=Free2b+Sunflower+Seed+Butter+Cups+-+Dark+Chocolate"
+            ],
+            "price": "~$6.19 for 4.2 oz (8 mini cups)",
+            "warning_level": "Safe",
+            "tags": [
+              "certified-allergen-free",
+              "peanut-free",
+              "dairy-free"
+            ],
+            "reasoning": "This is the most direct safe replacement, replicating the classic peanut butter cup concept using sunflower seed butter. It is explicitly free from peanuts and dairy, manufactured in a dedicated facility free from the top 12 allergens, ensuring maximum safety standard against cross-contamination.",
+            "sources": []
+          },
+          {
+            "alternative_name": "SunCups Dark Chocolate Mini Cups (Sunflower Butter)",
+            "company": "Setton Farms",
+            "image_url": "https://m.media-amazon.com/images/I/81m69j3y2AL.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=SunCups+Dark+Chocolate+Mini+Cups+%28Sunflower+Butter%29",
+              "https://www.walmart.com/search?q=SunCups+Dark+Chocolate+Mini+Cups+%28Sunflower+Butter%29",
+              "https://www.target.com/s?searchTerm=SunCups+Dark+Chocolate+Mini+Cups+%28Sunflower+Butter%29"
+            ],
+            "price": "~$6.99 for 4.2 oz bag",
+            "warning_level": "Safe",
+            "tags": [
+              "seed-butter",
+              "gluten-free",
+              "vegan"
+            ],
+            "reasoning": "A second, reliable cup alternative that provides the desired sweet/salty creamy filling inside a chocolate shell. SunCups are certified dairy-free and peanut-free, utilizing sunflower seed butter as a safe alternative. This product offers portion-controlled mini cups, similar to the original product format.",
+            "sources": []
+          },
+          {
+            "alternative_name": "No Whey! Foods Milkless Peanut Butter Cups",
+            "company": "No Whey! Foods",
+            "image_url": "https://i.ebayimg.com/images/g/c0YAAOSw7N9jY-1r/s-l1600.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=No+Whey%21+Foods+Milkless+Peanut+Butter+Cups",
+              "https://www.walmart.com/search?q=No+Whey%21+Foods+Milkless+Peanut+Butter+Cups",
+              "https://www.target.com/s?searchTerm=No+Whey%21+Foods+Milkless+Peanut+Butter+Cups"
+            ],
+            "price": "~$5.49 for 1.7 oz (2 cups)",
+            "warning_level": "Safe",
+            "tags": [
+              "top-8-free",
+              "kosher-parve",
+              "school-safe"
+            ],
+            "reasoning": "Despite the name, this product is manufactured in a dedicated facility free from the top 8 allergens, including peanuts and dairy, using sunflower seeds for the filling. It is a premium, high-safety option, though slightly less available and higher priced per unit than the other cups.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Amanda's Own Allergy Friendly Chocolate Bars (Milkless Style)",
+            "company": "Amanda's Own",
+            "image_url": "https://www.amandasown.com/cdn/shop/files/MilklessBar.png?v=1686616422",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Amanda%27s+Own+Allergy+Friendly+Chocolate+Bars+%28Milkless+Style%29",
+              "https://www.walmart.com/search?q=Amanda%27s+Own+Allergy+Friendly+Chocolate+Bars+%28Milkless+Style%29",
+              "https://www.target.com/s?searchTerm=Amanda%27s+Own+Allergy+Friendly+Chocolate+Bars+%28Milkless+Style%29"
+            ],
+            "price": "~$4.50 for 1.75 oz bar",
+            "warning_level": "Safe",
+            "tags": [
+              "milkless-chocolate",
+              "nut-free",
+              "dedicated-facility"
+            ],
+            "reasoning": "This choice offers a solid chocolate replacement with a 'milk chocolate' taste achieved through rice powder, satisfying the user's need for a creamy, sweet coating without the dairy. The facility strictly excludes dairy, peanuts, and tree nuts, making it exceptionally safe for sensitive individuals.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Trupo Treats Milkless Chocolate Wafer Bars (Crispy Crunch)",
+            "company": "Trupo Treats",
+            "image_url": "https://trupotreats.com/cdn/shop/files/CrispyCrunchBar_1200x.png?v=1686520786",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Trupo+Treats+Milkless+Chocolate+Wafer+Bars+%28Crispy+Crunch%29",
+              "https://www.walmart.com/search?q=Trupo+Treats+Milkless+Chocolate+Wafer+Bars+%28Crispy+Crunch%29",
+              "https://www.target.com/s?searchTerm=Trupo+Treats+Milkless+Chocolate+Wafer+Bars+%28Crispy+Crunch%29"
+            ],
+            "price": "~$3.99 for 1.76 oz bar",
+            "warning_level": "Safe",
+            "tags": [
+              "rispy-texture",
+              "vegan",
+              "rice-milk-based"
+            ],
+            "reasoning": "Provides a safe alternative to the texture experience of a classic candy bar, offering a creamy, crispy crunch profile. Manufactured in a dedicated allergen-free facility, this product is confirmed free of both peanuts and dairy, using rice milk chocolate as the base.",
+            "sources": []
+          }
+        ],
+        "summary": {
+          "original_product": "Peanut Butter Cups Pantry Pack 25 Cups Snack Size",
+          "safety_status": "Dangerous",
+          "allergens_found": [
+            "peanuts",
+            "dairy"
+          ],
+          "alternatives_found": 5,
+          "safe_alternatives": 5,
+          "caution_alternatives": 0,
+          "total_sources": 0,
+          "analysis_time_seconds": 59.36
+        },
+        "all_sources": []
+      }
+    },
+    {
+      "test_id": "002",
+      "status": "success",
+      "predictions": {
+        "severity": "Safe",
+        "allergens_detected": [],
+        "alternatives_count": 5
+      },
+      "ground_truth": {
+        "severity": "Safe",
+        "allergens_detected": [],
+        "contains_product": true,
+        "product_category": "beverage",
+        "alternatives": {
+          "min_count": 0,
+          "should_be_safe": true,
+          "should_avoid_allergens": []
+        }
+      },
+      "correct": {
+        "severity": true,
+        "allergens": true
+      },
+      "latency_seconds": 64.69,
+      "full_result": {
+        "allergen_analysis": {
+          "severity": "Safe",
+          "allergens_detected": [],
+          "warnings": "**Product Identified:** 100% Apple Juice From Concentrate\n\n**Safety Status:** Safe for individuals with shellfish and soy allergies\n\n**Analysis:**\n\n\u2022 **Shellfish:** Shellfish is not listed as an ingredient in Tree Top 100% Apple Juice [1]. Shellfish is highly improbable to be processed in the same facilities or on the same equipment utilized for manufacturing pure fruit juice products [2]. Tree Top generally commits to robust sanitation and manufacturing controls to prevent cross-contact with allergens [4]. The risk of presence is considered negligible [3].\n\n\u2022 **Soy:** Soy is not listed as an ingredient. The complete ingredients are Filtered Water, Apple Juice Concentrate, and Ascorbic Acid (Vitamin C) [1]. While Tree Top processes other products that may contain soy derivatives, the company explicitly states that pure juice products like this one are low-risk [3]. Tree Top facilities utilize cleaning and segregation lines to prevent cross-contact, minimizing the risk of adventitious soy presence [4].\n\n**Conclusion:** This product is classified as Safe. The 100% Apple Juice contains a simple ingredient profile (water, apple juice concentrate, and Vitamin C) and does not contain either shellfish or soy as intentional ingredients [1]. Furthermore, based on Tree Top's allergen management policies and the nature of pure juice production, the risk of cross-contamination for both shellfish and soy is considered very low [3][4]. The manufacturer does not list any warnings for cross-contamination involving these allergens [4].",
+          "product_name": "100% Apple Juice From Concentrate",
+          "sources": [
+            {
+              "title": "Tree Top Inc. - Allergen Statement and Product Information",
+              "url": "https://www.treetop.com/faq-category/product-information/",
+              "relevance": "Provides general information on Tree Top's commitment to preventing allergen cross-contact and lists common allergens they monitor. Indicates pure juice products are low-risk for major allergens like soy and shellfish."
+            },
+            {
+              "title": "FDA Recall Search Database (for Tree Top)",
+              "url": "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts",
+              "relevance": "Checked for recent recalls related to undeclared allergens in Tree Top juice products. None found for undeclared shellfish or soy in this specific product."
+            }
+          ]
+        },
+        "alternatives": [
+          {
+            "alternative_name": "Tree Top 100% Pure Apple Juice (64 fl oz)",
+            "company": "Tree Top, Inc.",
+            "image_url": "https://i5.walmartimages.com/asr/3133606f-7984-4860-91a6-2580556e40d6.1a1df270a498b89417cc43387799d10c.jpeg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Tree+Top+100%25+Pure+Apple+Juice+%2864+fl+oz%29",
+              "https://www.walmart.com/search?q=Tree+Top+100%25+Pure+Apple+Juice+%2864+fl+oz%29",
+              "https://www.target.com/s?searchTerm=Tree+Top+100%25+Pure+Apple+Juice+%2864+fl+oz%29"
+            ],
+            "price": "~$3.49 for 64 fl oz bottle",
+            "warning_level": "Safe",
+            "tags": [
+              "budget-friendly",
+              "no-added-sugar",
+              "shellfish-free-facility"
+            ],
+            "reasoning": "This is a highly reliable and cost-effective alternative. Tree Top explicitly verified that its production facilities do not process marine crustaceans or mollusk shellfish, directly addressing the core safety constraint. The simple 100% juice formula also minimizes risk of soy contamination, making it a highly safe and accessible replacement for the original concentrated juice.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Santa Cruz Organic 100% Pure Apple Juice (32 fl oz)",
+            "company": "The J.M. Smucker Company (Santa Cruz Organic)",
+            "image_url": "https://images.instacart.com/products/434674/instacart_endpoint/99f1fa02-b258-47d0-9988-d4e5f91f3bce.jpeg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Santa+Cruz+Organic+100%25+Pure+Apple+Juice+%2832+fl+oz%29",
+              "https://www.walmart.com/search?q=Santa+Cruz+Organic+100%25+Pure+Apple+Juice+%2832+fl+oz%29",
+              "https://www.target.com/s?searchTerm=Santa+Cruz+Organic+100%25+Pure+Apple+Juice+%2832+fl+oz%29"
+            ],
+            "price": "~$4.99 for 32 fl oz bottle",
+            "warning_level": "Safe",
+            "tags": [
+              "organic",
+              "not-from-concentrate",
+              "pure-pressed"
+            ],
+            "reasoning": "This substitution offers higher quality (Not From Concentrate) while maintaining strong safety protocols. As part of a recognized safe brand (Santa Cruz/Smucker's), the single ingredient (apple juice) is clean and carries no soy or shellfish warnings. It is a premium, safe, and readily available alternative to the original concentrated product.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Tropicana Kids Organic Apple Juice Boxes (8-pack)",
+            "company": "PepsiCo (Tropicana)",
+            "image_url": "https://i5.walmartimages.com/asr/24c883ed-e60d-400a-8af0-be9986b1c0b3.5651378d30e32b0dd8c34f8fa9be2153.jpeg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Tropicana+Kids+Organic+Apple+Juice+Boxes+%288-pack%29",
+              "https://www.walmart.com/search?q=Tropicana+Kids+Organic+Apple+Juice+Boxes+%288-pack%29",
+              "https://www.target.com/s?searchTerm=Tropicana+Kids+Organic+Apple+Juice+Boxes+%288-pack%29"
+            ],
+            "price": "~$4.49 for 8-pack (6 fl oz boxes)",
+            "warning_level": "Safe",
+            "tags": [
+              "organic",
+              "single-serving",
+              "lunchbox-friendly"
+            ],
+            "reasoning": "This provides a convenient, single-serve format alternative to the bulk concentrated juice. The formula is 100% organic juice with a simple composition, confirmed safe from internal and cross-contamination risks related to soy and shellfish by corporate allergen policies. Its widespread availability ensures an easy replacement option.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Martinelli's Sparkling Cider 100% Juice (25.4 fl oz)",
+            "company": "S. Martinelli & Company",
+            "image_url": "https://i5.walmartimages.com/asr/7289ee09-4676-47b8-b4b6-791f612ab7fe.034f719326e0ccf1a07bb52382a8be9b.jpeg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Martinelli%27s+Sparkling+Cider+100%25+Juice+%2825.4+fl+oz%29",
+              "https://www.walmart.com/search?q=Martinelli%27s+Sparkling+Cider+100%25+Juice+%2825.4+fl+oz%29",
+              "https://www.target.com/s?searchTerm=Martinelli%27s+Sparkling+Cider+100%25+Juice+%2825.4+fl+oz%29"
+            ],
+            "price": "~$4.29 for 25.4 fl oz bottle",
+            "warning_level": "Safe",
+            "tags": [
+              "sparkling",
+              "carbonated",
+              "holiday-alternative"
+            ],
+            "reasoning": "Martinelli's offers a safe and enjoyable sensory variation to standard apple juice, ideal for mixing or celebration. The ingredients are simple (100% apple juice and carbon dioxide), guaranteeing the absence of soy and shellfish ingredients. The company's focus on apple products also ensures a clean production environment for the target allergens.",
+            "sources": []
+          },
+          {
+            "alternative_name": "R.W. Knudsen Family Organic Just Tart Cherry Juice (32 fl oz)",
+            "company": "The J.M. Smucker Company (R.W. Knudsen Family)",
+            "image_url": "https://i5.walmartimages.com/seo/R-W-Knudsen-Family-Organic-Just-Tart-Cherry-Juice-32-fl-oz_b4860b73-04e4-4d89-98c4-e4c194e432a5.981881a7b8dfa00298a0e88c03565af4.jpeg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=R.W.+Knudsen+Family+Organic+Just+Tart+Cherry+Juice+%2832+fl+oz%29",
+              "https://www.walmart.com/search?q=R.W.+Knudsen+Family+Organic+Just+Tart+Cherry+Juice+%2832+fl+oz%29",
+              "https://www.target.com/s?searchTerm=R.W.+Knudsen+Family+Organic+Just+Tart+Cherry+Juice+%2832+fl+oz%29"
+            ],
+            "price": "~$12.99 for 32 fl oz bottle",
+            "warning_level": "Safe",
+            "tags": [
+              "alternative-fruit",
+              "single-ingredient",
+              "tart"
+            ],
+            "reasoning": "Chosen for ingredient safety and novelty, this provides a flavorful, non-apple juice alternative. It contains only one ingredient (tart cherry juice) from a brand known for rigorous allergen controls (Smucker's). Its single-ingredient purity makes cross-contamination risk negligible regarding soy and shellfish, though it is the most expensive option selected.",
+            "sources": []
+          }
+        ],
+        "summary": {
+          "original_product": "100% Apple Juice From Concentrate",
+          "safety_status": "Safe",
+          "allergens_found": [],
+          "alternatives_found": 5,
+          "safe_alternatives": 5,
+          "caution_alternatives": 0,
+          "total_sources": 2,
+          "analysis_time_seconds": 64.69
+        },
+        "all_sources": [
+          {
+            "title": "Tree Top Inc. - Allergen Statement and Product Information",
+            "url": "https://www.treetop.com/faq-category/product-information/",
+            "relevance": "Provides general information on Tree Top's commitment to preventing allergen cross-contact and lists common allergens they monitor. Indicates pure juice products are low-risk for major allergens like soy and shellfish."
+          },
+          {
+            "title": "FDA Recall Search Database (for Tree Top)",
+            "url": "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts",
+            "relevance": "Checked for recent recalls related to undeclared allergens in Tree Top juice products. None found for undeclared shellfish or soy in this specific product."
+          }
+        ]
+      }
+    },
+    {
+      "test_id": "003",
+      "status": "success",
+      "predictions": {
+        "severity": "Caution",
+        "allergens_detected": [
+          "tree nuts"
+        ],
+        "alternatives_count": 5
+      },
+      "ground_truth": {
+        "severity": "Caution",
+        "allergens_detected": [],
+        "contains_product": true,
+        "product_category": "snack",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": [
+            "tree nuts"
+          ]
+        }
+      },
+      "correct": {
+        "severity": true,
+        "allergens": false
+      },
+      "latency_seconds": 69.62,
+      "full_result": {
+        "allergen_analysis": {
+          "severity": "Caution",
+          "allergens_detected": [
+            "tree nuts"
+          ],
+          "warnings": "**Product Identified:** Crunchy Oats 'N Honey Granola Bars\n\n**Safety Status:** Caution for individuals with tree nut allergy\n\n**Analysis:**\n\n\u2022 **tree nuts:** Tree nuts (specifically almond and pecan) are not direct ingredients in the Oats 'N Honey Granola Bars [1]. However, the product carries a mandatory cross-contamination warning stating, \"MAY CONTAIN PEANUT, ALMOND AND PECAN INGREDIENTS\" [2]. The manufacturing facility processes various tree nuts, and this warning signals a high risk of cross-contamination due to shared equipment or production lines [3]. Therefore, potential exposure from trace amounts is explicitly identified and acknowledged by the manufacturer [2].\n\n**Conclusion:** This product is classified as Caution. Although tree nuts are not intentionally added as ingredients, the product label includes a concrete \"May Contain\" advisory for tree nuts (almond and pecan) [1]. Exercise strong caution when considering consumption due to the high risk of cross-contamination from the manufacturing environment [3].",
+          "product_name": "Crunchy Oats 'N Honey Granola Bars",
+          "sources": [
+            {
+              "title": "Nature Valley Crunchy Oats 'N Honey Granola Bars, 6 ct",
+              "url": "https://www.target.com/p/nature-valley-crunchy-oats-n-honey-granola-bars-6ct/-/A-13009772",
+              "relevance": "Confirmed active ingredients, 'Contains' (barley), and 'May Contain' (peanut, almond, pecan) warnings."
+            },
+            {
+              "title": "Nature Valley Crunchy Oats N' Honey Granola Bars, 6 count",
+              "url": "https://www.walmart.com/ip/Nature-Valley-Crunchy-Oats-N-Honey-Granola-Bars-6-count/20697921",
+              "relevance": "Verified ingredient list and cross-contamination warning concerning tree nuts (almond and pecan)."
+            }
+          ]
+        },
+        "alternatives": [
+          {
+            "alternative_name": "MadeGood Granola Bars - Chocolate Chip",
+            "company": "MadeGood",
+            "image_url": "https://images.instacart.com/products/4392224/instacart_freeze_dry_resize_unit.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=MadeGood+Granola+Bars+-+Chocolate+Chip",
+              "https://www.walmart.com/search?q=MadeGood+Granola+Bars+-+Chocolate+Chip",
+              "https://www.target.com/s?searchTerm=MadeGood+Granola+Bars+-+Chocolate+Chip"
+            ],
+            "price": "~$4.19 for 6-count box",
+            "warning_level": "Safe",
+            "tags": [
+              "Dedicated nut-free",
+              "Certified organic",
+              "Whole-grain"
+            ],
+            "reasoning": "This is the most direct substitute, offering a traditional granola bar texture and format. It is manufactured in a dedicated peanut and tree nut-free facility, providing the highest level of safety. It also features certified organic, gluten-free oats and grains, making it an excellent, high-quality replacement for the original product.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Don't Go Nuts Snack Bar - Chocolate Chip",
+            "company": "Don't Go Nuts",
+            "image_url": "https://m.media-amazon.com/images/I/71R2o5fT-bL.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Don%27t+Go+Nuts+Snack+Bar+-+Chocolate+Chip",
+              "https://www.walmart.com/search?q=Don%27t+Go+Nuts+Snack+Bar+-+Chocolate+Chip",
+              "https://www.target.com/s?searchTerm=Don%27t+Go+Nuts+Snack+Bar+-+Chocolate+Chip"
+            ],
+            "price": "~$2.25 per single bar",
+            "warning_level": "Safe",
+            "tags": [
+              "Dedicated nut-free",
+              "High protein",
+              "Gluten-free oats"
+            ],
+            "reasoning": "This option is built entirely around being nut-free, with the facility and brand name emphasizing allergen safety. It uses certified gluten-free oats and offers a high-protein, substantial snack bar, closely matching the function and safety requirements of the original 'Crunchy Oats' product.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Oat Haus Granola Butter Filled Oats N' Honey Bar",
+            "company": "Oat Haus",
+            "image_url": "https://oathaus.com/cdn/shop/files/Box_OatsNHoney_Web.png?v=1708465133",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Oat+Haus+Granola+Butter+Filled+Oats+N%27+Honey+Bar",
+              "https://www.walmart.com/search?q=Oat+Haus+Granola+Butter+Filled+Oats+N%27+Honey+Bar",
+              "https://www.target.com/s?searchTerm=Oat+Haus+Granola+Butter+Filled+Oats+N%27+Honey+Bar"
+            ],
+            "price": "~$2.20 per 1.5 oz bar",
+            "warning_level": "Safe",
+            "tags": [
+              "Oats N' Honey flavor",
+              "Top 9 Free",
+              "Nut-free spread"
+            ],
+            "reasoning": "This bar is the only candidate that matches the original 'Oats N' Honey' flavor, making it a great taste substitute. It uses 'Granola Butter' as a nut-free spread replacement and is certified Top 9 Allergen Free, confirming a dedicated, high-safety manufacturing process.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Enjoy Life Chewy Bars - Cocoa Loco",
+            "company": "Enjoy Life Foods",
+            "image_url": "https://images.target.com/is/image/Target/14436531",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Enjoy+Life+Chewy+Bars+-+Cocoa+Loco",
+              "https://www.walmart.com/search?q=Enjoy+Life+Chewy+Bars+-+Cocoa+Loco",
+              "https://www.target.com/s?searchTerm=Enjoy+Life+Chewy+Bars+-+Cocoa+Loco"
+            ],
+            "price": "~$4.79 for 5-count box",
+            "warning_level": "Safe",
+            "tags": [
+              "Free from 14 allergens",
+              "Dedicated nut-free",
+              "Certified gluten-free"
+            ],
+            "reasoning": "Enjoy Life is a leading, reliable allergen-friendly brand known for extensive safety protocols. This chewy bar is made in a dedicated facility free from 14 major allergens. Although slightly softer than the original 'Crunchy Oats,' it provides an extremely safe and widely available oat-based snack option.",
+            "sources": []
+          },
+          {
+            "alternative_name": "MadeGood Crispy Squares - Vanilla Flavor",
+            "company": "MadeGood",
+            "image_url": "https://www.madegoodfoods.com/cdn/shop/products/madegood-crispy-squares-vanilla-6ct-box-front_720x.png?v=1667503576",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=MadeGood+Crispy+Squares+-+Vanilla+Flavor",
+              "https://www.walmart.com/search?q=MadeGood+Crispy+Squares+-+Vanilla+Flavor",
+              "https://www.target.com/s?searchTerm=MadeGood+Crispy+Squares+-+Vanilla+Flavor"
+            ],
+            "price": "~$4.29 for 6-count box",
+            "warning_level": "Safe",
+            "tags": [
+              "Crunchy texture",
+              "Dedicated nut-free",
+              "Vegetable extracts"
+            ],
+            "reasoning": "Chosen for its confirmed safety (dedicated nut-free facility, shared with the MadeGood Granola Bar) and its texture. The crispy square format offers a crunchy consistency that aligns better with the 'Crunchy Oats' description than softer snack bars. It incorporates vegetable extracts for added nutrition.",
+            "sources": []
+          }
+        ],
+        "summary": {
+          "original_product": "Crunchy Oats 'N Honey Granola Bars",
+          "safety_status": "Caution",
+          "allergens_found": [
+            "tree nuts"
+          ],
+          "alternatives_found": 5,
+          "safe_alternatives": 5,
+          "caution_alternatives": 0,
+          "total_sources": 2,
+          "analysis_time_seconds": 69.62
+        },
+        "all_sources": [
+          {
+            "title": "Nature Valley Crunchy Oats 'N Honey Granola Bars, 6 ct",
+            "url": "https://www.target.com/p/nature-valley-crunchy-oats-n-honey-granola-bars-6ct/-/A-13009772",
+            "relevance": "Confirmed active ingredients, 'Contains' (barley), and 'May Contain' (peanut, almond, pecan) warnings."
+          },
+          {
+            "title": "Nature Valley Crunchy Oats N' Honey Granola Bars, 6 count",
+            "url": "https://www.walmart.com/ip/Nature-Valley-Crunchy-Oats-N-Honey-Granola-Bars-6-count/20697921",
+            "relevance": "Verified ingredient list and cross-contamination warning concerning tree nuts (almond and pecan)."
+          }
+        ]
+      }
+    },
+    {
+      "test_id": "004",
+      "status": "success",
+      "predictions": {
+        "severity": "NotDetected",
+        "allergens_detected": [],
+        "alternatives_count": 0
+      },
+      "ground_truth": {
+        "severity": "NotDetected",
+        "allergens_detected": [],
+        "contains_product": false,
+        "product_category": null,
+        "alternatives": {
+          "min_count": 0,
+          "should_be_safe": null,
+          "should_avoid_allergens": []
+        }
+      },
+      "correct": {
+        "severity": true,
+        "allergens": true
+      },
+      "latency_seconds": 3.01,
+      "full_result": {
+        "allergen_analysis": {
+          "severity": "NotDetected",
+          "allergens_detected": [],
+          "warnings": "No food product detected. The image shows a blue BMW car parked outdoors on a paved area, with trees and grass in the background.",
+          "sources": []
+        },
+        "alternatives": [],
+        "summary": {
+          "original_product": "Unknown",
+          "safety_status": "NotDetected",
+          "allergens_found": [],
+          "alternatives_found": 0,
+          "safe_alternatives": 0,
+          "caution_alternatives": 0,
+          "total_sources": 0,
+          "analysis_time_seconds": 3.01
+        },
+        "all_sources": []
+      }
+    },
+    {
+      "test_id": "005",
+      "status": "success",
+      "predictions": {
+        "severity": "Dangerous",
+        "allergens_detected": [
+          "dairy"
+        ],
+        "alternatives_count": 5
+      },
+      "ground_truth": {
+        "severity": "Dangerous",
+        "allergens_detected": [
+          "dairy"
+        ],
+        "contains_product": true,
+        "product_category": "dairy",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": [
+            "dairy",
+            "eggs",
+            "soy"
+          ]
+        }
+      },
+      "correct": {
+        "severity": true,
+        "allergens": true
+      },
+      "latency_seconds": 54.6,
+      "full_result": {
+        "allergen_analysis": {
+          "severity": "Dangerous",
+          "allergens_detected": [
+            "dairy"
+          ],
+          "warnings": "**Product Identified:** Natural Cheese String Cheese Mozzarella (Low-Moisture Part-Skim Mozzarella Cheese)\n\n**Safety Status:** Dangerous for individuals with dairy allergy\n\n**Analysis:**\n\n\u2022 **Dairy:** This product is inherently a dairy product, specifically Mozzarella cheese made from milk. The primary ingredient is low-moisture part-skim mozzarella cheese, which is derived directly from cultured pasteurized part-skim milk [1]. An individual with a milk or dairy allergy must strictly avoid this product, as milk is the foundational ingredient [2].\n\n\u2022 **Eggs:** The ingredient list does not contain any direct egg ingredients like eggs, egg whites, or albumin, nor are there any 'may contain' warnings for eggs [1]. Therefore, this product does not pose an egg allergy risk, based on publicly available ingredient data.\n\n\u2022 **Soy:** The ingredient list for this specific cheese product does not list soy or soy-derived ingredients such as soy lecithin or soybean oil [1]. Furthermore, no cross-contamination warnings regarding soy were found in the publicly available ingredient information.\n\n**Conclusion:** This product is classified as Dangerous. The primary ingredient is mozzarella cheese made from milk, making it a severe and unavoidable risk for individuals with a dairy allergy [1]. This product is NOT SAFE for consumption by anyone with a dairy allergy or milk sensitivity. Avoid this product.",
+          "product_name": "Natural Cheese String Cheese Mozzarella (Low-Moisture Part-Skim Mozzarella Cheese)",
+          "sources": []
+        },
+        "alternatives": [
+          {
+            "alternative_name": "Violife Just Like Mozzarella Flavor Block",
+            "company": "Violife / Upfield",
+            "image_url": "https://m.media-amazon.com/images/I/71YyNfVq20L.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Violife+Just+Like+Mozzarella+Flavor+Block",
+              "https://www.walmart.com/search?q=Violife+Just+Like+Mozzarella+Flavor+Block",
+              "https://www.target.com/s?searchTerm=Violife+Just+Like+Mozzarella+Flavor+Block"
+            ],
+            "price": "~$5.99 for 7.05 oz block",
+            "warning_level": "Safe",
+            "tags": [
+              "certified-safe",
+              "dairy-free",
+              "soy-free"
+            ],
+            "reasoning": "Violife is certified dairy-free, egg-free, and soy-free, meeting all crucial safety constraints. The firm coconut oil base mimics the texture of mozzarella, allowing it to be easily sliced into sticks for an exact replacement of the original string cheese snack format. It is widely available and affordably priced compared to specialty items.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Violife Just Like Provolone Flavor Slices",
+            "company": "Violife / Upfield",
+            "image_url": "https://images.instacart.com/products/4915607/instacart_guide_crop.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Violife+Just+Like+Provolone+Flavor+Slices",
+              "https://www.walmart.com/search?q=Violife+Just+Like+Provolone+Flavor+Slices",
+              "https://www.target.com/s?searchTerm=Violife+Just+Like+Provolone+Flavor+Slices"
+            ],
+            "price": "~$5.79 for 7.05 oz package",
+            "warning_level": "Safe",
+            "tags": [
+              "vegan",
+              "allergy-friendly",
+              "coconut-based"
+            ],
+            "reasoning": "Like the Mozzarella block, this product is confirmed safe and certified free of dairy, eggs, and soy from its dedicated facility. While in slice format, the firm provolone offers a strong savory flavor preferred by some users and can be rolled or folded to create a convenient, dense snack similar to the stick format.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Follow Your Heart Dairy-Free Mozzarella Style Block",
+            "company": "Follow Your Heart",
+            "image_url": "https://images.contentstack.io/v3/assets/blte21ae1370de8d26c/blt39cce4f2081f9a56/64293f0b2405bf12462e74e4/Mozzarella_Block_22394_7_oz.png",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Follow+Your+Heart+Dairy-Free+Mozzarella+Style+Block",
+              "https://www.walmart.com/search?q=Follow+Your+Heart+Dairy-Free+Mozzarella+Style+Block",
+              "https://www.target.com/s?searchTerm=Follow+Your+Heart+Dairy-Free+Mozzarella+Style+Block"
+            ],
+            "price": "~$6.49 for 7 oz block",
+            "warning_level": "Safe",
+            "tags": [
+              "dairy-free",
+              "soy-free",
+              "snack-ready"
+            ],
+            "reasoning": "This block is explicitly marketed and verified as soy-free, dairy-free, and egg-free, ensuring high safety confidence. Its firm, sliceable mozzarella texture is well-suited for manually cutting into small sticks, providing the necessary chewiness and savory experience required to replace string cheese.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Miyoko's Kitchen Cultured Vegan Roadhouse Cheddar Style Block",
+            "company": "Miyoko's Kitchen",
+            "image_url": "https://miyokoskitchen.com/cdn/shop/files/RoadhouseCheddarStyleBlock_450x.png",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Miyoko%27s+Kitchen+Cultured+Vegan+Roadhouse+Cheddar+Style+Block",
+              "https://www.walmart.com/search?q=Miyoko%27s+Kitchen+Cultured+Vegan+Roadhouse+Cheddar+Style+Block",
+              "https://www.target.com/s?searchTerm=Miyoko%27s+Kitchen+Cultured+Vegan+Roadhouse+Cheddar+Style+Block"
+            ],
+            "price": "~$8.99 for 8 oz block",
+            "warning_level": "Caution",
+            "tags": [
+              "artisan-vegan",
+              "cashew-based",
+              "firm-texture"
+            ],
+            "reasoning": "This choice offers a premium, firmer texture due to its culturing and aging process, which is excellent for being cut into dense, chewy sticks. It is certified soy-free, dairy-free, and egg-free at the ingredient level. The 'Caution' rating reflects its cashew base (a tree nut) and general facility practices despite strong ingredient safety claims.",
+            "sources": []
+          },
+          {
+            "alternative_name": "Miyoko's Kitchen Cultured Vegan Moxarella Style Block",
+            "company": "Miyoko's Kitchen",
+            "image_url": "https://miyokoskitchen.com/cdn/shop/files/MoxarellaStyleBlock_450x.png",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Miyoko%27s+Kitchen+Cultured+Vegan+Moxarella+Style+Block",
+              "https://www.walmart.com/search?q=Miyoko%27s+Kitchen+Cultured+Vegan+Moxarella+Style+Block",
+              "https://www.target.com/s?searchTerm=Miyoko%27s+Kitchen+Cultured+Vegan+Moxarella+Style+Block"
+            ],
+            "price": "~$8.99 for 8 oz block",
+            "warning_level": "Caution",
+            "tags": [
+              "cultured",
+              "soy-free",
+              "premium-quality"
+            ],
+            "reasoning": "Chosen as the fifth best option for its high-quality composition, the Moxarella style mimics the fresh, classic flavor of mozzarella. It is confirmed soy-free, egg-free, and dairy-free, essential for safety. Like the Roadhouse Cheddar, it receives a 'Caution' due to its tree nut (cashew) base and being a specialty product, but remains a safe ingredient choice.",
+            "sources": []
+          }
+        ],
+        "summary": {
+          "original_product": "Natural Cheese String Cheese Mozzarella (Low-Moisture Part-Skim Mozzarella Cheese)",
+          "safety_status": "Dangerous",
+          "allergens_found": [
+            "dairy"
+          ],
+          "alternatives_found": 5,
+          "safe_alternatives": 3,
+          "caution_alternatives": 2,
+          "total_sources": 0,
+          "analysis_time_seconds": 54.6
+        },
+        "all_sources": []
+      }
+    },
+    {
+      "test_id": "006",
+      "status": "success",
+      "predictions": {
+        "severity": "Dangerous",
+        "allergens_detected": [
+          "dairy"
+        ],
+        "alternatives_count": 5
+      },
+      "ground_truth": {
+        "severity": "Dangerous",
+        "allergens_detected": [
+          "dairy"
+        ],
+        "contains_product": true,
+        "product_category": "snack",
+        "alternatives": {
+          "min_count": 3,
+          "should_be_safe": true,
+          "should_avoid_allergens": [
+            "dairy"
+          ]
+        }
+      },
+      "correct": {
+        "severity": true,
+        "allergens": true
+      },
+      "latency_seconds": 61.56,
+      "full_result": {
+        "allergen_analysis": {
+          "severity": "Dangerous",
+          "allergens_detected": [
+            "dairy"
+          ],
+          "warnings": "**Product Identified:** Top Ramen Chicken Flavor Ramen Noodle Soup\n\n**Safety Status:** Dangerous for individuals with dairy allergy\n\n**Analysis:**\n\n\u2022 **dairy:** Dairy is confirmed to be a direct ingredient in this product. The complete ingredient list specifies the presence of 'LACTOSE', which is a sugar derived from milk [1]. Furthermore, the official product allergen warning explicitly states, 'CONTAINS WHEAT, SOY, EGG, AND MILK' [1], confirming inclusion of the user's allergen, Milk/Dairy.\n\n**Conclusion:** This product is classified as Dangerous. This classification is based on the direct inclusion of Milk/Dairy in the formula, specifically listed as 'LACTOSE' and confirmed by the mandatory 'CONTAINS... MILK' allergen statement on the packaging [1] [2]. This product is NOT SAFE for individuals with identified dairy allergies and should be avoided.",
+          "product_name": "Top Ramen Chicken Flavor Ramen Noodle Soup",
+          "sources": [
+            {
+              "title": "Nissin Top Ramen Chicken Flavor Ramen Noodle Soup Ingredients",
+              "url": "https://www.walmart.com/ip/Nissin-Top-Ramen-Chicken-Flavor-Ramen-Noodle-Soup/10295166",
+              "relevance": "Confirmed complete ingredient list, including WHEAT, SOY, EGG, and MILK allergen warning, and specific ingredient 'LACTOSE'."
+            },
+            {
+              "title": "Nissin Top Ramen, Instant Noodle Soup, Chicken Flavor Ingredients",
+              "url": "https://www.instacart.com/products/209930-nissin-top-ramen-instant-noodle-soup-chicken-flavor-3-oz",
+              "relevance": "Verification of the allergen warning (Contains Milk) and 'LACTOSE' as a direct ingredient."
+            }
+          ]
+        },
+        "alternatives": [
+          {
+            "alternative_name": "Nongshim Soon Veggie Noodle Soup (Cup)",
+            "company": "Nongshim",
+            "image_url": "https://m.media-amazon.com/images/I/81xUeJbE1TL._SL1500_.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Nongshim+Soon+Veggie+Noodle+Soup+%28Cup%29",
+              "https://www.walmart.com/search?q=Nongshim+Soon+Veggie+Noodle+Soup+%28Cup%29",
+              "https://www.target.com/s?searchTerm=Nongshim+Soon+Veggie+Noodle+Soup+%28Cup%29"
+            ],
+            "price": "~$1.79 for 2.64 oz cup",
+            "warning_level": "Safe",
+            "tags": [
+              "Certified-Vegan",
+              "Dairy-Free",
+              "Low-Cost"
+            ],
+            "reasoning": "This is a safe, highly affordable replacement for instant ramen. It is Certified Vegan, guaranteeing the complete exclusion of all dairy products, which was the user's primary concern. It offers the classic, rapid preparation and savory broth experience of the original Top Ramen, making it an excellent, low-risk alternative.",
+            "priority_score": 1,
+            "sources": []
+          },
+          {
+            "alternative_name": "Koyo Ramen Instant Noodle Soup - Garlic Pepper Flavor",
+            "company": "Koyo (Non-GMO Verified)",
+            "image_url": "https://m.media-amazon.com/images/I/81YdG5y5G1L.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Koyo+Ramen+Instant+Noodle+Soup+-+Garlic+Pepper+Flavor",
+              "https://www.walmart.com/search?q=Koyo+Ramen+Instant+Noodle+Soup+-+Garlic+Pepper+Flavor",
+              "https://www.target.com/s?searchTerm=Koyo+Ramen+Instant+Noodle+Soup+-+Garlic+Pepper+Flavor"
+            ],
+            "price": "~$1.29 per 2.1 oz block",
+            "warning_level": "Safe",
+            "tags": [
+              "Vegan",
+              "Organic",
+              "Air-Dried Noodle"
+            ],
+            "reasoning": "Koyo is a trusted brand known for safer, higher-quality instant noodles. It is certified Vegan and dairy-free, avoiding all milk components, and uses air-dried, non-fried noodles. This option closely mimics the traditional Top Ramen block format while providing a savory, safe, and cost-effective soup base.",
+            "priority_score": 2,
+            "sources": []
+          },
+          {
+            "alternative_name": "Dr. McDougall's Right Foods Vegan Miso Ramen",
+            "company": "Dr. McDougall's Right Foods",
+            "image_url": "https://m.media-amazon.com/images/I/81F7D+yv2yL.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Dr.+McDougall%27s+Right+Foods+Vegan+Miso+Ramen",
+              "https://www.walmart.com/search?q=Dr.+McDougall%27s+Right+Foods+Vegan+Miso+Ramen",
+              "https://www.target.com/s?searchTerm=Dr.+McDougall%27s+Right+Foods+Vegan+Miso+Ramen"
+            ],
+            "price": "~$3.99 for 1.9 oz cup",
+            "warning_level": "Safe",
+            "tags": [
+              "Certified-Vegan",
+              "Dairy-Free",
+              "Miso-Umami"
+            ],
+            "reasoning": "This alternative is Certified Vegan and explicitly dairy-free, adhering to the strict safety requirements. It provides the 'instant cup' convenience of the original product but utilizes a savory miso base to deliver the necessary umami flavor profile, often featuring lower sodium than traditional mass-market brands.",
+            "priority_score": 3,
+            "sources": []
+          },
+          {
+            "alternative_name": "Immi Instant Ramen Noodles - Black Garlic 'Chicken' Flavor",
+            "company": "Immi",
+            "image_url": "https://m.media-amazon.com/images/I/71YvE3fT9hL.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Immi+Instant+Ramen+Noodles+-+Black+Garlic+%27Chicken%27+Flavor",
+              "https://www.walmart.com/search?q=Immi+Instant+Ramen+Noodles+-+Black+Garlic+%27Chicken%27+Flavor",
+              "https://www.target.com/s?searchTerm=Immi+Instant+Ramen+Noodles+-+Black+Garlic+%27Chicken%27+Flavor"
+            ],
+            "price": "~$7.00 per package (single meal)",
+            "warning_level": "Safe",
+            "tags": [
+              "Plant-Based",
+              "Dairy-Free",
+              "High-Protein"
+            ],
+            "reasoning": "This is chosen as a premium, flavor-matched alternative. Immi is 100% Plant-Based and confirmed Dairy-Free, and the 'Black Garlic Chicken' flavor specifically attempts to mimic the savory profile of the original chicken ramen, but with added nutritional benefits (high protein). Its safety is explicitly guaranteed by its vegan status.",
+            "priority_score": 4,
+            "sources": []
+          },
+          {
+            "alternative_name": "Ocean's Halo Ramen Broth (Vegan) + Ocean's Halo Ramen Noodles",
+            "company": "Ocean's Halo",
+            "image_url": "https://m.media-amazon.com/images/I/719h-sQ-3qL._SL1500_.jpg",
+            "purchase_links": [
+              "https://www.amazon.com/s?k=Ocean%27s+Halo+Ramen+Broth+%28Vegan%29+%2B+Ocean%27s+Halo+Ramen+Noodles",
+              "https://www.walmart.com/search?q=Ocean%27s+Halo+Ramen+Broth+%28Vegan%29+%2B+Ocean%27s+Halo+Ramen+Noodles",
+              "https://www.target.com/s?searchTerm=Ocean%27s+Halo+Ramen+Broth+%28Vegan%29+%2B+Ocean%27s+Halo+Ramen+Noodles"
+            ],
+            "price": "Broth: ~$4.99 for 32 oz carton",
+            "warning_level": "Safe",
+            "tags": [
+              "Vegan-Certified",
+              "Ready-to-Use Broth",
+              "DIY Noodle Kit"
+            ],
+            "reasoning": "This two-part solution is Certified Vegan and dairy-free, offering guaranteed safety while providing a higher-quality bowl of ramen. It replaces the flavor packet with a pre-made liquid broth, enhancing the savory experience over standard instant packet ramen, suitable for users willing to prep slightly more.",
+            "priority_score": 5,
+            "sources": []
+          }
+        ],
+        "summary": {
+          "original_product": "Top Ramen Chicken Flavor Ramen Noodle Soup",
+          "safety_status": "Dangerous",
+          "allergens_found": [
+            "dairy"
+          ],
+          "alternatives_found": 5,
+          "safe_alternatives": 5,
+          "caution_alternatives": 0,
+          "total_sources": 2,
+          "analysis_time_seconds": 61.56
+        },
+        "all_sources": [
+          {
+            "title": "Nissin Top Ramen Chicken Flavor Ramen Noodle Soup Ingredients",
+            "url": "https://www.walmart.com/ip/Nissin-Top-Ramen-Chicken-Flavor-Ramen-Noodle-Soup/10295166",
+            "relevance": "Confirmed complete ingredient list, including WHEAT, SOY, EGG, and MILK allergen warning, and specific ingredient 'LACTOSE'."
+          },
+          {
+            "title": "Nissin Top Ramen, Instant Noodle Soup, Chicken Flavor Ingredients",
+            "url": "https://www.instacart.com/products/209930-nissin-top-ramen-instant-noodle-soup-chicken-flavor-3-oz",
+            "relevance": "Verification of the allergen warning (Contains Milk) and 'LACTOSE' as a direct ingredient."
+          }
+        ]
+      }
+    }
+  ]
+}
