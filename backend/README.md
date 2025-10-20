@@ -2,6 +2,10 @@
 
 FastAPI-based backend service for food allergy detection and safe alternative finder.
 
+## Important Note
+
+⚠️ **This system only works with food products that have their brand labeling and packaging visible.** The ideal use case is photographing packaged products at a grocery store where the ingredient list, nutrition label, and allergen warnings are clearly visible on the packaging. The AI requires this information to accurately detect allergens.
+
 ## Features
 
 - 🔍 **8-Phase Analysis Pipeline**: Comprehensive allergen detection + alternative finding

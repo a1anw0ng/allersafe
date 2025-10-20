@@ -2,6 +2,10 @@
 
 AI-powered food allergy safety system with real-time product analysis and safe alternative recommendations.
 
+## Important Note
+
+⚠️ **This project only works with food products that have their brand labeling and packaging visible.** The ideal setting would be seeing a product at a grocery store and taking a photo of it with the packaging clearly shown. The AI analyzes ingredient lists, nutrition labels, and allergen warnings printed on the packaging.
+
 ## System Architecture
 
 **Frontend**: Next.js 14 (TypeScript, Tailwind CSS, Zustand)

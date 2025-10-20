@@ -2,6 +2,10 @@
 
 AllerSafe helps people with dietary restrictions and allergies find safe food alternatives by scanning products and meals.
 
+## Important Note
+
+⚠️ **This app only works with food products that have their brand labeling and packaging visible.** The ideal use case is photographing packaged products at a grocery store where the ingredient list, nutrition label, and allergen warnings are clearly visible. The AI analyzes this packaging information to detect allergens accurately.
+
 ## Features
 
 ### Currently Implemented
