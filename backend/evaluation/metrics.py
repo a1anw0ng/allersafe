@@ -287,7 +287,7 @@ class EvaluationMetrics:
         test_id: str,
         input_tokens: int,
         output_tokens: int,
-        model: str = "gemini-2.5-flash"
+        model: str = "claude-haiku-4-5-20251001"
     ):
         """Record API cost for test
 
@@ -295,7 +295,7 @@ class EvaluationMetrics:
             test_id: Test case identifier
             input_tokens: Number of input tokens used
             output_tokens: Number of output tokens used
-            model: Model name for pricing (default: gemini-2.5-flash)
+            model: Model name for pricing (default: claude-haiku-4-5-20251001)
         """
         self.cost_metrics["total_input_tokens"] += input_tokens
         self.cost_metrics["total_output_tokens"] += output_tokens
