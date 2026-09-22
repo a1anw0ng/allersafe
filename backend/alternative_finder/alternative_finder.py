@@ -186,14 +186,19 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     candidate_names = [c.get("product_name") or c.get("alternative_name") or c.get("name") or "" for c in candidates]
-    candidate_names = [n for n in candidate_names if n][:3]
+    candidate_names = [n for n in candidate_names if n]
     verify_context = ""
     sources_call3 = []
+    # Cache per-candidate Tavily results so phase 7 (pricing) can reuse them
+    # instead of running another 3 searches. Retailer/manufacturer pages
+    # usually contain both ingredients and price on the same page.
+    per_candidate_context = {}
     for name in candidate_names:
-        ctx, srcs = tavily_search(f"{name} ingredients allergens", max_results=3)
+        ctx, srcs = tavily_search(f"{name} ingredients allergens price buy", max_results=3)
         if ctx:
             verify_context += f"\n\n--- Search for: {name} ---\n{ctx}"
             sources_call3.extend(srcs)
+            per_candidate_context[name] = ctx
     if verify_context:
         prompt3 = (
             f"{prompt3}\n\nWeb search results (use these to verify ingredient safety):\n"
@@ -241,18 +246,20 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
             safe_products=json.dumps(safe_products, indent=2)
         )
 
+    # Reuse the Tavily results we already fetched in phase 6 — same retailer
+    # pages typically contain both ingredients and price, and the combined
+    # query in phase 6 was written to surface pages that have both.
     safe_names = [p.get("product_name") or p.get("alternative_name") or p.get("name") or "" for p in safe_products]
-    safe_names = [n for n in safe_names if n][:3]
+    safe_names = [n for n in safe_names if n]
     price_context = ""
-    sources_call4 = []
+    sources_call4 = []  # sources already captured in sources_call3; keep list for the source-merging step below
     for name in safe_names:
-        ctx, srcs = tavily_search(f"{name} price buy", max_results=3)
-        if ctx:
-            price_context += f"\n\n--- Search for: {name} ---\n{ctx}"
-            sources_call4.extend(srcs)
+        cached = per_candidate_context.get(name)
+        if cached:
+            price_context += f"\n\n--- Search for: {name} ---\n{cached}"
     if price_context:
         prompt4 = (
-            f"{prompt4}\n\nWeb search results (use these for pricing and store availability):\n"
+            f"{prompt4}\n\nWeb search results (reused from safety verification — use these for pricing and store availability):\n"
             f"{price_context}\n\n"
             "IMPORTANT: Return ONLY a valid JSON object matching the schema. "
             "No prose, no markdown code fences."

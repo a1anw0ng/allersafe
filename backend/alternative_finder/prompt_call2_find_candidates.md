@@ -6,7 +6,7 @@ Use the web search tool to find alternative products based on the search strateg
 {category_analysis}
 
 ## Your Task - Find Alternative Product Candidates:
-Use web search extensively to find 8-10 alternative products that match the search criteria.
+Use web search to find exactly 3 alternative products that best match the search criteria. Choose the 3 you have the highest confidence about — each one will be individually verified for allergen safety in the next phase, and all 3 will be shown to the user.
 
 ### Search Instructions:
 
@@ -20,7 +20,7 @@ Use web search extensively to find 8-10 alternative products that match the sear
    - Search major retailers: Amazon, Walmart, Target, Whole Foods
    - Look for manufacturer websites
    - Find specialty allergen-free food sites if relevant
-   - Identify 8-10 specific product alternatives (with exact product names and brands)
+   - Identify exactly 3 specific product alternatives (with exact product names and brands) — pick the 3 you have highest confidence about
 
 3. **Gather Basic Information**:
    - Full product name with brand (e.g., "Enjoy Life Soft Baked Cookies - Double Chocolate Brownie")
@@ -57,8 +57,8 @@ Use web search extensively to find 8-10 alternative products that match the sear
 }}
 
 **Important**:
-- Must find 8-10 candidate products (or as many as available)
-- Each product must be real and currently available
+- Must return exactly 3 candidate products
+- Each product must be real and currently available — no hallucinated products
 - Include full product names (brand + product name + variant if applicable)
 - Document all sources for verification
-- Cast a wide net - we'll verify safety in the next phase
+- Pick the 3 you are most confident about; all 3 will be individually verified and shown to the user
