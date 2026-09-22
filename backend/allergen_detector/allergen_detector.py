@@ -287,6 +287,53 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         unique_sources = clean_sources_list(all_sources)
 
         final_result['sources'] = unique_sources
+
+        # Safety guardrail: refuse to declare "Safe" without corroborating sources.
+        # An unverified answer is not safe for a food-allergy user — downgrade to Caution.
+        if final_result.get('severity') == 'Safe' and not unique_sources:
+            print("⚠️  GUARDRAIL: 'Safe' verdict with no sources — downgrading to Caution.")
+            final_result['severity'] = 'Caution'
+            existing_warnings = final_result.get('warnings', '')
+            final_result['warnings'] = (
+                "Verification note: web sources for this product could not be confirmed, "
+                "so this verdict has been downgraded from Safe to Caution as a safety precaution. "
+                "Please check the packaging directly before consuming.\n\n"
+                + existing_warnings
+            )
+
+        # Safety guardrail: catch prose/severity contradictions.
+        # If severity is Safe but the warnings paragraph acknowledges a user allergen
+        # is present, Claude produced an inconsistent JSON object — trust the prose.
+        if final_result.get('severity') == 'Safe':
+            warnings_lower = final_result.get('warnings', '').lower()
+            for allergen in [a.lower() for a in allergens]:
+                if not allergen:
+                    continue
+                if allergen in warnings_lower and 'not detected' not in warnings_lower and 'not present' not in warnings_lower and 'no ' + allergen not in warnings_lower:
+                    print(f"⚠️  GUARDRAIL: warnings mention '{allergen}' but severity=Safe — downgrading to Caution.")
+                    final_result['severity'] = 'Caution'
+                    break
+
+        # Safety guardrail: strip prescriptive medical-advice phrases.
+        # AllerSafe should describe ingredients, not tell users what they can eat.
+        MEDICAL_PHRASES = [
+            'you can eat',
+            'you should eat',
+            'should be fine',
+            'safe to consume for you',
+            'safe for you to eat',
+            "won't cause a reaction",
+            "you're not allergic",
+        ]
+        warnings_text = final_result.get('warnings', '')
+        if any(phrase in warnings_text.lower() for phrase in MEDICAL_PHRASES):
+            print("⚠️  GUARDRAIL: medical-advice phrasing detected — prepending disclaimer.")
+            final_result['warnings'] = (
+                "Note: This analysis describes the product's ingredients, not medical advice. "
+                "Consult a healthcare provider for personal dietary guidance.\n\n"
+                + warnings_text
+            )
+
         return final_result
     except json.JSONDecodeError as e:
         print(f"JSON parsing error in Call 3: {e}")
