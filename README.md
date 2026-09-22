@@ -127,6 +127,7 @@ npm run dev
 
 ## Documentation
 
+- [System Architecture](./docs/architecture.md) — full data flow, phase breakdown, design decisions
 - [Backend API Documentation](./backend/README.md)
 - [Frontend Documentation](./allersafe/README.md)
 - [Evaluation System](./backend/evaluation/README.md)
