@@ -19,29 +19,18 @@ load_dotenv()
 BEDROCK_MODEL = "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 def validate_and_fix_purchase_links(alternatives: List[Dict]) -> List[Dict]:
-    """Create reliable search-based purchase links
-
-    Instead of using potentially broken direct product URLs, we always use
-    search URLs which are guaranteed to work and find current products.
-
-    Args:
-        alternatives: List of alternative products with purchase_links
-
-    Returns:
-        Updated alternatives with reliable search-based purchase links
-    """
+    """Replace hallucinated product URLs with reliable search URLs, and drop
+    hallucinated image_url fields (Claude cannot know real product image URLs)."""
     for alt in alternatives:
         product_name = alt.get('alternative_name', '')
+
+        alt.pop('image_url', None)
 
         if not product_name:
             alt['purchase_links'] = []
             continue
 
-        # URL-encode the product name for search queries
         encoded_name = quote_plus(product_name)
-
-        # Always use search URLs - they're more reliable than direct product URLs
-        # which can become outdated, have wrong IDs, or be discontinued
         alt['purchase_links'] = [
             f"https://www.amazon.com/s?k={encoded_name}",
             f"https://www.walmart.com/search?q={encoded_name}",
