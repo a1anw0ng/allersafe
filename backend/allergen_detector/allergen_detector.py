@@ -12,9 +12,11 @@ from dotenv import load_dotenv
 
 # Import shared utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import extract_grounding_sources, clean_sources_list
+from utils import clean_sources_list, tavily_search
 
 load_dotenv()
+
+BEDROCK_MODEL = "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 def extract_json_from_text(text):
     """Extract JSON from text that might contain markdown or extra content
@@ -70,7 +72,19 @@ def detect_allergens(image_path, allergens, progress_callback=None):
     """
     # Read and encode image
     with open(image_path, "rb") as f:
-        image_b64 = base64.b64encode(f.read()).decode()
+        image_bytes = f.read()
+    image_b64 = base64.b64encode(image_bytes).decode()
+    # Detect MIME type from magic bytes — Claude validates this strictly
+    if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        image_mime = "image/png"
+    elif image_bytes[:3] == b"\xff\xd8\xff":
+        image_mime = "image/jpeg"
+    elif image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        image_mime = "image/webp"
+    elif image_bytes[:6] in (b"GIF87a", b"GIF89a"):
+        image_mime = "image/gif"
+    else:
+        image_mime = "image/jpeg"
 
     module_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -92,15 +106,14 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         prompt1 = f.read().format(allergen_instruction=allergen_instruction)
 
     response1 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 1 requires vision support
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": [
                 {"type": "text", "text": prompt1},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
+                {"type": "image_url", "image_url": {"url": f"data:{image_mime};base64,{image_b64}"}}
             ],
         }]
-        # No web_search_options for Call 1
     )
 
     # Extract JSON from Call 1
@@ -141,15 +154,18 @@ def detect_allergens(image_path, allergens, progress_callback=None):
             allergens=allergen_list
         )
 
+    product_name = image_analysis.get("product_name") or image_analysis.get("brand") or ""
+    search_query = f"{product_name} ingredients allergens" if product_name else "product ingredients allergens"
+    search_context, sources_call2 = tavily_search(search_query, max_results=5)
+    if search_context:
+        prompt2 = f"{prompt2}\n\nWeb search results (use these as ground truth for ingredients and allergens):\n{search_context}"
+
     response2 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 2 requires web search
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": prompt2
-        }],
-        web_search_options={
-            "search_context_size": "low"
-        }
+        }]
     )
 
     # Extract JSON from Call 2
@@ -169,8 +185,7 @@ def detect_allergens(image_path, allergens, progress_callback=None):
             print(f"Full response: {content2}")
             web_research = {"complete_ingredients": "not_found", "sources": []}
 
-    # Extract sources from grounding metadata for Call 2
-    sources_call2 = extract_grounding_sources(response2)
+    # sources_call2 was captured above from tavily_search
 
     # ============================================================
     # CALL 3: Final Analysis (No Web Search)
@@ -186,12 +201,11 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         )
 
     response3 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": prompt3
         }]
-        # No web_search_options for Call 3
     )
 
     # Extract JSON from Call 3

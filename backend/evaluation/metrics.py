@@ -29,6 +29,10 @@ class EvaluationMetrics:
         "claude-3-5-haiku-20241022": {
             "input_per_mtok": 0.80,
             "output_per_mtok": 4.00
+        },
+        "claude-haiku-4-5-20251001": {
+            "input_per_mtok": 1.00,
+            "output_per_mtok": 5.00
         }
     }
 

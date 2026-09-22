@@ -12,9 +12,11 @@ from dotenv import load_dotenv
 
 # Import shared utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import extract_grounding_sources, clean_sources_list
+from utils import clean_sources_list, tavily_search
 
 load_dotenv()
+
+BEDROCK_MODEL = "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 def validate_and_fix_purchase_links(alternatives: List[Dict]) -> List[Dict]:
     """Create reliable search-based purchase links
@@ -96,12 +98,11 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     response1 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": prompt1
         }]
-        # No web_search_options for Call 1
     )
 
     content1 = response1.choices[0].message.content
@@ -126,15 +127,31 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
             category_analysis=json.dumps(category_analysis, indent=2)
         )
 
+    strategy = category_analysis.get("search_strategy", {}) or {}
+    llm_terms = strategy.get("search_terms") or []
+    original_name = (category_analysis.get("original_product") or {}).get("name") or ""
+    if llm_terms:
+        search_query = llm_terms[0]
+    elif original_name and allergens:
+        search_query = f"{allergens[0]}-free alternative to {original_name}"
+    else:
+        search_query = "allergen-free snack alternatives"
+    search_context, sources_call2 = tavily_search(search_query, max_results=5)
+    if search_context:
+        prompt2 = (
+            f"{prompt2}\n\nWeb search results (use these to find real alternative products):\n"
+            f"{search_context}\n\n"
+            "IMPORTANT: Return ONLY a valid JSON object matching the schema. "
+            "Do not include prose, explanations, apologies, or markdown code fences. "
+            "If the search results are insufficient, still return valid JSON using known safe brands from the search_strategy."
+        )
+
     response2 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 5 requires web search
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": prompt2
-        }],
-        web_search_options={
-            "search_context_size": "low"
-        }
+        }]
     )
 
     content2 = response2.choices[0].message.content
@@ -148,8 +165,6 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         candidates = candidates_data.get('candidates', [])
     except:
         candidates = []
-
-    sources_call2 = extract_grounding_sources(response2)
 
     if not candidates:
         return []
@@ -166,15 +181,29 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
             candidates=json.dumps(candidates, indent=2)
         )
 
+    candidate_names = [c.get("product_name") or c.get("alternative_name") or c.get("name") or "" for c in candidates]
+    candidate_names = [n for n in candidate_names if n][:3]
+    verify_context = ""
+    sources_call3 = []
+    for name in candidate_names:
+        ctx, srcs = tavily_search(f"{name} ingredients allergens", max_results=3)
+        if ctx:
+            verify_context += f"\n\n--- Search for: {name} ---\n{ctx}"
+            sources_call3.extend(srcs)
+    if verify_context:
+        prompt3 = (
+            f"{prompt3}\n\nWeb search results (use these to verify ingredient safety):\n"
+            f"{verify_context}\n\n"
+            "IMPORTANT: Return ONLY a valid JSON object matching the schema. "
+            "No prose, no markdown code fences."
+        )
+
     response3 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 6 requires web search
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": prompt3
-        }],
-        web_search_options={
-            "search_context_size": "low"
-        }
+        }]
     )
 
     content3 = response3.choices[0].message.content
@@ -191,8 +220,6 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
     except:
         safe_products = candidates  # Fallback to candidates if safety check fails
 
-    sources_call3 = extract_grounding_sources(response3)
-
     if not safe_products:
         return []
 
@@ -207,15 +234,29 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
             safe_products=json.dumps(safe_products, indent=2)
         )
 
+    safe_names = [p.get("product_name") or p.get("alternative_name") or p.get("name") or "" for p in safe_products]
+    safe_names = [n for n in safe_names if n][:3]
+    price_context = ""
+    sources_call4 = []
+    for name in safe_names:
+        ctx, srcs = tavily_search(f"{name} price buy", max_results=3)
+        if ctx:
+            price_context += f"\n\n--- Search for: {name} ---\n{ctx}"
+            sources_call4.extend(srcs)
+    if price_context:
+        prompt4 = (
+            f"{prompt4}\n\nWeb search results (use these for pricing and store availability):\n"
+            f"{price_context}\n\n"
+            "IMPORTANT: Return ONLY a valid JSON object matching the schema. "
+            "No prose, no markdown code fences."
+        )
+
     response4 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",  # Phase 7 requires web search
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": prompt4
-        }],
-        web_search_options={
-            "search_context_size": "low"
-        }
+        }]
     )
 
     content4 = response4.choices[0].message.content
@@ -229,8 +270,6 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         pricing_results = pricing_data.get('pricing_results', [])
     except:
         pricing_results = []
-
-    sources_call4 = extract_grounding_sources(response4)
 
     # ============================================================
     # CALL 5: Final Selection & Synthesis (No Web Search)
@@ -247,12 +286,11 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
         )
 
     response5 = litellm.completion(
-        model="openrouter/google/gemini-2.5-flash-preview-09-2025",
+        model=BEDROCK_MODEL,
         messages=[{
             "role": "user",
             "content": prompt5
         }]
-        # No web_search_options for Call 5
     )
 
     content5 = response5.choices[0].message.content

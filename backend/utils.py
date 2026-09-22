@@ -1,6 +1,43 @@
 #!/usr/bin/env python3
 """Shared utilities for allergen detection and alternative finding"""
 
+import os
+from typing import Tuple
+
+
+def tavily_search(query: str, max_results: int = 5) -> Tuple[str, list]:
+    """Run a Tavily web search and return (context_block, sources).
+
+    context_block: plain-text string safe to inject into an LLM prompt.
+    sources: [{'title','url'}, ...] in the shape the frontend expects.
+    Returns ("", []) on any error so callers can proceed without crashing.
+    """
+    api_key = os.getenv("TAVILY_API_KEY")
+    if not api_key or not query:
+        return "", []
+
+    try:
+        from tavily import TavilyClient
+        client = TavilyClient(api_key=api_key)
+        resp = client.search(query=query, max_results=max_results, search_depth="basic")
+    except Exception as e:
+        print(f"Tavily search failed: {type(e).__name__}: {e}")
+        return "", []
+
+    results = resp.get("results", []) if isinstance(resp, dict) else []
+    sources = []
+    lines = []
+    for i, r in enumerate(results, 1):
+        url = r.get("url", "")
+        title = r.get("title") or url
+        snippet = (r.get("content") or "").strip().replace("\n", " ")
+        if url and is_valid_source_url(url):
+            sources.append({"title": title, "url": url})
+            lines.append(f"[{i}] {title}\n{url}\n{snippet}")
+
+    return "\n\n".join(lines), sources
+
+
 def is_valid_source_url(url: str) -> bool:
     """Check if URL is a valid, direct source (not a redirect)
 
