@@ -8,11 +8,13 @@ import litellm
 import os
 import re
 from pathlib import Path
+from pydantic import ValidationError
 from dotenv import load_dotenv
 
 # Import shared utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import clean_sources_list, tavily_search
+from schemas import Phase1Output, Phase2Output, Phase3Output
 
 load_dotenv()
 
@@ -127,7 +129,11 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         return {"severity": "Caution", "allergens_detected": [], "warnings": "Image analysis failed - could not parse response", "sources": []}
 
     try:
-        image_analysis = json.loads(json_str)
+        image_analysis = Phase1Output.model_validate_json(json_str).model_dump()
+    except ValidationError as ve:
+        print(f"Pydantic validation error in Call 1: {ve}")
+        print(f"Full response: {content1}")
+        return {"severity": "Caution", "allergens_detected": [], "warnings": "Image analysis response did not match expected schema", "sources": []}
     except json.JSONDecodeError as e:
         print(f"JSON parsing error in Call 1: {e}")
         print(f"Full response: {content1}")
@@ -179,7 +185,11 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         web_research = {"complete_ingredients": "not_found", "sources": []}
     else:
         try:
-            web_research = json.loads(json_str)
+            web_research = Phase2Output.model_validate_json(json_str).model_dump()
+        except ValidationError as ve:
+            print(f"Pydantic validation error in Call 2: {ve}")
+            print(f"Full response: {content2}")
+            web_research = {"complete_ingredients": "not_found", "sources": []}
         except json.JSONDecodeError as e:
             print(f"JSON parsing error in Call 2: {e}")
             print(f"Full response: {content2}")
@@ -227,7 +237,20 @@ def detect_allergens(image_path, allergens, progress_callback=None):
         print(f"Attempting to parse JSON (length: {len(json_str)} chars)")
         print(f"First 200 chars: {json_str[:200]}")
 
-        final_result = json.loads(json_str)
+        # Parse via Pydantic — enforces field types and allowed severity values.
+        try:
+            parsed = Phase3Output.model_validate_json(json_str)
+        except ValidationError as ve:
+            print(f"Pydantic validation error in Call 3: {ve}")
+            print(f"Extracted JSON string: {json_str}")
+            return {
+                "severity": "Caution",
+                "allergens_detected": [],
+                "warnings": f"Analysis response did not match expected schema: {ve.error_count()} field error(s). Please try again.",
+                "sources": sources_call2 if sources_call2 else []
+            }
+
+        final_result = parsed.model_dump()
 
         # Validate severity matches warnings content
         warnings_text = final_result.get('warnings', '').lower()

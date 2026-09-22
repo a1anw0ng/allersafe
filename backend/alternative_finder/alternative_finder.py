@@ -8,15 +8,26 @@ import litellm
 import os
 from typing import List, Dict
 from urllib.parse import quote_plus
+from pydantic import ValidationError, TypeAdapter
 from dotenv import load_dotenv
 
 # Import shared utilities
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import clean_sources_list, tavily_search
+from schemas import (
+    Phase4Output,
+    Phase5Output,
+    Phase6Output,
+    Phase7Output,
+    FinalAlternative,
+)
 
 load_dotenv()
 
 BEDROCK_MODEL = "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+# TypeAdapter for phase 8 (which returns a JSON array, not a JSON object)
+_FinalAlternativesAdapter = TypeAdapter(List[FinalAlternative])
 
 def validate_and_fix_purchase_links(alternatives: List[Dict]) -> List[Dict]:
     """Replace hallucinated product URLs with reliable search URLs, and drop
@@ -99,10 +110,12 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
 
     start = content1.find('{')
     end = content1.rfind('}') + 1
+    json_str = content1[start:end] if start >= 0 else content1
 
     try:
-        category_analysis = json.loads(content1[start:end] if start >= 0 else content1)
-    except:
+        category_analysis = Phase4Output.model_validate_json(json_str).model_dump()
+    except (ValidationError, json.JSONDecodeError) as e:
+        print(f"Phase 4 parse error: {type(e).__name__}: {e}")
         return [{"alternative_name": "Category analysis failed", "company": "N/A", "purchase_links": [], "price": "N/A", "warning_level": "Caution", "tags": ["Error"]}]
 
     # ============================================================
@@ -148,11 +161,13 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
 
     start = content2.find('{')
     end = content2.rfind('}') + 1
+    json_str = content2[start:end] if start >= 0 else content2
 
     try:
-        candidates_data = json.loads(content2[start:end] if start >= 0 else content2)
+        candidates_data = Phase5Output.model_validate_json(json_str).model_dump()
         candidates = candidates_data.get('candidates', [])
-    except:
+    except (ValidationError, json.JSONDecodeError) as e:
+        print(f"Phase 5 parse error: {type(e).__name__}: {e}")
         candidates = []
 
     if not candidates:
@@ -200,14 +215,17 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
 
     start = content3.find('{')
     end = content3.rfind('}') + 1
+    json_str = content3[start:end] if start >= 0 else content3
 
     try:
-        safety_data = json.loads(content3[start:end] if start >= 0 else content3)
+        safety_data = Phase6Output.model_validate_json(json_str).model_dump()
         safety_results = safety_data.get('safety_results', [])
         # Filter out dangerous products
         safe_products = [p for p in safety_results if p.get('safety_status') != 'Dangerous']
-    except:
+    except (ValidationError, json.JSONDecodeError) as e:
+        print(f"Phase 6 parse error: {type(e).__name__}: {e}")
         safe_products = candidates  # Fallback to candidates if safety check fails
+        safety_results = []
 
     if not safe_products:
         return []
@@ -253,11 +271,13 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
 
     start = content4.find('{')
     end = content4.rfind('}') + 1
+    json_str = content4[start:end] if start >= 0 else content4
 
     try:
-        pricing_data = json.loads(content4[start:end] if start >= 0 else content4)
+        pricing_data = Phase7Output.model_validate_json(json_str).model_dump()
         pricing_results = pricing_data.get('pricing_results', [])
-    except:
+    except (ValidationError, json.JSONDecodeError) as e:
+        print(f"Phase 7 parse error: {type(e).__name__}: {e}")
         pricing_results = []
 
     # ============================================================
@@ -291,7 +311,14 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
 
     try:
         if start >= 0 and end > 0:
-            final_alternatives = json.loads(content5[start:end])
+            json_str = content5[start:end]
+            try:
+                validated = _FinalAlternativesAdapter.validate_json(json_str)
+                final_alternatives = [alt.model_dump() for alt in validated]
+            except ValidationError as ve:
+                print(f"Phase 8 Pydantic validation error: {ve}")
+                # Fall back to raw json.loads so we still return something usable
+                final_alternatives = json.loads(json_str)
 
             # Merge all sources and clean/deduplicate (removes invalid/redirect URLs)
             all_sources = sources_call2 + sources_call3 + sources_call4
@@ -302,7 +329,7 @@ def find_alternatives(image_path: str, allergens: List[str], allergen_result: Di
                 if 'sources' not in alt:
                     alt['sources'] = unique_sources
 
-            # Validate and fix purchase links
+            # Validate and fix purchase links (also strips hallucinated image_url)
             final_alternatives = validate_and_fix_purchase_links(final_alternatives)
 
             return final_alternatives[:5]  # Limit to 5
