@@ -10,14 +10,14 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file
-COPY requirements.txt .
+# Copy requirements file (paths are relative to repo root when Railway builds)
+COPY backend/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire backend directory
-COPY . .
+COPY backend/ .
 
 # Expose port 8000
 EXPOSE 8000
