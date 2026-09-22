@@ -8,24 +8,35 @@ AI-powered food allergy safety system with real-time product analysis and safe a
 
 ## System Architecture
 
-**Frontend**: Next.js 14 (TypeScript, Tailwind CSS, Zustand)
+**Frontend**: Next.js 16 (TypeScript, Tailwind CSS, Zustand)
 **Backend**: FastAPI with streaming support (Python)
-**AI Model**: Gemini 2.5 Flash via OpenRouter with web search
-**Storage**: AWS S3 for image handling
+**AI Model**: Anthropic Claude Haiku 4.5 via AWS Bedrock (`us.anthropic.claude-haiku-4-5-20251001-v1:0`)
+**Web Search**: Tavily API (used by RAG pattern on 4 of 8 phases)
+**Image Storage**: AWS S3
+
+### Retrieval-Augmented Generation (RAG)
+
+Four of the eight phases need up-to-date, verifiable web information — real ingredient lists, real product availability, real prices. Bedrock has no built-in web search, so the backend implements the classic RAG pattern for those phases:
+
+1. **Retrieve** — Python calls Tavily with a phase-specific query.
+2. **Augment** — retrieved snippets are injected into the prompt as a "Web search results" block, with URLs preserved.
+3. **Generate** — Claude reasons over the augmented prompt and returns JSON that cites the injected sources.
+
+The other four phases (image analysis, allergen synthesis, categorization, final ranking) are pure LLM reasoning with no retrieval — the model already has everything it needs from prior-phase output.
 
 ### 8-Phase Analysis Pipeline
 
 **Allergen Detection (Phases 1-3):**
-1. Visual analysis with ingredient extraction
-2. Web verification of product details
-3. Final allergen assessment with severity rating
+1. Visual analysis with ingredient extraction (Claude vision, no retrieval)
+2. Web verification of product details (**RAG** — Tavily + Claude)
+3. Final allergen assessment with severity rating (Claude reasoning)
 
 **Alternative Finding (Phases 4-8):**
-4. Product categorization
-5. General category alternatives search
-6. Brand-specific alternatives search
-7. Store availability search
-8. Final alternatives ranking
+4. Product categorization (Claude reasoning)
+5. General category alternatives search (**RAG** — Tavily + Claude)
+6. Brand-specific safety verification (**RAG** — Tavily + Claude, one query per candidate)
+7. Store availability & pricing (**RAG** — Tavily + Claude, one query per candidate)
+8. Final alternatives ranking (Claude reasoning)
 
 ## Project Structure
 
@@ -41,6 +52,7 @@ AllergyDetector/
 │   ├── main.py           # API endpoints
 │   ├── allergen_detector/ # Phases 1-3
 │   ├── alternative_finder/ # Phases 4-8
+│   ├── utils.py           # Shared helpers (Tavily wrapper, source cleaning)
 │   ├── evaluation/        # Testing & metrics
 │   └── README.md
 └── README.md             # This file
@@ -57,7 +69,7 @@ cd backend
 pip install -r requirements.txt
 
 # Configure environment (.env file)
-OPENROUTER_API_KEY=your_openrouter_key
+TAVILY_API_KEY=your_tavily_key
 AWS_ACCESS_KEY_ID=your_aws_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret
 AWS_REGION=us-east-2
@@ -69,6 +81,11 @@ docker-compose up --build
 # Or run locally
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+**IAM requirements** — the AWS credentials must have:
+- **S3**: read/write access to `AWS_S3_BUCKET_NAME` (for uploaded product images).
+- **Bedrock**: `bedrock:InvokeModel` and `bedrock:InvokeModelWithResponseStream` on Claude Haiku 4.5. The `AmazonBedrockFullAccess` managed policy covers this.
+- **Region**: Bedrock model access must be enabled for `us-east-2` (matches `AWS_REGION`). The `us.` prefix in the model ID is a cross-region inference profile, required for Haiku 4.5.
 
 ### Frontend Setup
 
@@ -88,10 +105,10 @@ npm run dev
 ## Key Features
 
 - **Real-time Streaming Analysis**: Server-sent events for live progress updates
-- **Multi-phase Verification**: Web search integration for accurate allergen detection
-- **Safe Alternatives**: AI-powered recommendations with purchase links
-- **Source Citations**: Every analysis includes verifiable web sources
-- **Comprehensive Testing**: Built-in evaluation framework with metrics
+- **Multi-phase RAG Verification**: Tavily-backed web search on ingredient facts, brand safety claims, and store availability
+- **Safe Alternatives**: AI-powered recommendations with search-URL-based purchase links (guaranteed to resolve, unlike hallucinated product URLs)
+- **Source Citations**: Every allergen and alternative claim is backed by a real Tavily-retrieved URL
+- **Comprehensive Testing**: Built-in evaluation framework with metrics and per-model pricing
 
 ## API Endpoints
 
@@ -117,6 +134,7 @@ npm run dev
 
 ## Deployment
 
-Both frontend and backend include Docker configurations and deployment configs for Railway/Render.
+- **Frontend**: Vercel (auto-deploys on push to `main`)
+- **Backend**: Railway (Docker-based build via `backend/Dockerfile`, binds to Railway's `$PORT`)
 
-See individual README files for deployment instructions.
+See individual README files for host-specific instructions.

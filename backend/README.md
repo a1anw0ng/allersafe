@@ -8,14 +8,36 @@ FastAPI-based backend service for food allergy detection and safe alternative fi
 
 ## Features
 
-- 🔍 **8-Phase Analysis Pipeline**: Comprehensive allergen detection + alternative finding
-- 🌐 **Web Search Integration**: Real-time verification via Gemini 2.5 Flash with grounding
+- 🔍 **8-Phase Analysis Pipeline**: allergen detection + alternative finding
+- 🧠 **AI Model**: Anthropic Claude Haiku 4.5 via AWS Bedrock (cross-region inference profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`)
+- 🌐 **RAG Web Search**: Tavily API retrieves live sources; results are injected into Claude prompts on 4 of the 8 phases
 - 📡 **Streaming Support**: Server-sent events for real-time progress updates
-- 🐳 **Dockerized**: Easy deployment with Docker and Docker Compose
-- 🚀 **FastAPI**: High-performance async API
-- ☁️ **S3 Integration**: Direct image download from AWS S3
+- 🐳 **Dockerized**: `backend/Dockerfile` binds uvicorn to Railway's `$PORT` for portable deploy
+- 🚀 **FastAPI**: async request handling and SSE
+- ☁️ **AWS S3**: image storage for uploaded product photos
 - 📝 **Auto-documentation**: Interactive API docs at `/docs`
-- 🧪 **Evaluation Framework**: Built-in testing system with comprehensive metrics
+- 🧪 **Evaluation Framework**: built-in tests with per-model pricing (Gemini Flash, Claude Sonnet, Claude 3.5 Haiku, Claude Haiku 4.5)
+
+## Architecture: Retrieval-Augmented Generation (RAG)
+
+Bedrock has no built-in web search. To keep the "sources you can click on" feature that safety-critical allergen and alternative claims depend on, the backend implements the RAG pattern on the four phases that need live data:
+
+```
+Python (this backend)          Tavily API              AWS Bedrock
+─────────────────────          ──────────              ───────────
+build phase-specific query ──> web search  ──> results
+                                                  │
+inject results into prompt <──────────────────────┘
+send augmented prompt ─────────────────────────────────> Claude Haiku 4.5
+                                                              │
+receive JSON answer + cited URLs <────────────────────────────┘
+```
+
+**RAG phases**: 2 (product verification), 5 (find candidates), 6 (verify safety per candidate), 7 (pricing per candidate).
+
+**Non-RAG phases**: 1 (image analysis — Claude vision), 3 (allergen synthesis — reasoning), 4 (categorization — reasoning), 8 (final ranking — reasoning). These don't retrieve because the task is judgment, not fact-lookup.
+
+**Tavily API call budget per full scan**: ~8 searches (1 for phase 2, 1 for phase 5, up to 3 for phase 6, up to 3 for phase 7). Tavily's free tier is 1,000 searches/month → ~125 full scans/month at no cost.
 
 ## Quick Start
 
@@ -23,7 +45,7 @@ FastAPI-based backend service for food allergy detection and safe alternative fi
 
 1. **Ensure `.env` file exists** with required variables:
    ```env
-   OPENROUTER_API_KEY=your_openrouter_api_key
+   TAVILY_API_KEY=tvly-...
    AWS_ACCESS_KEY_ID=your_aws_access_key
    AWS_SECRET_ACCESS_KEY=your_aws_secret_key
    AWS_REGION=us-east-2
@@ -43,11 +65,11 @@ FastAPI-based backend service for food allergy detection and safe alternative fi
 ### Using Docker Only
 
 ```bash
-# Build
-docker build -t allersafe-backend .
+# Build (from repo root — Dockerfile expects backend/ as a subdirectory)
+docker build -f backend/Dockerfile -t allersafe-backend .
 
 # Run
-docker run -p 8000:8000 --env-file .env allersafe-backend
+docker run -p 8000:8000 --env-file backend/.env allersafe-backend
 ```
 
 ### Local Development (without Docker)
@@ -110,63 +132,20 @@ Full 8-phase analysis without streaming (returns complete result).
 }
 ```
 
+Note: `image_url` fields returned by Claude are stripped server-side, since the model cannot know real product image URLs and would otherwise hallucinate broken CDN links. `purchase_links` are similarly rewritten to guaranteed-resolvable Amazon/Walmart/Target search URLs.
+
 ### POST `/api/detect-allergens`
 
-Allergen detection only (Phases 1-3), no alternatives.
-
-**Request Body:**
-```json
-{
-  "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
-  "allergens": ["Milk", "Peanuts", "Eggs"]
-}
-```
-
-**Response:**
-```json
-{
-  "severity": "Safe|Caution|Dangerous|NotDetected",
-  "allergens_detected": ["Milk"],
-  "warnings": "Detailed explanation",
-  "sources": [{"title": "Product Info", "url": "https://..."}]
-}
-```
+Allergen detection only (Phases 1-3), no alternatives. Same request/response shape as above but without `alternatives`.
 
 ### POST `/api/find-alternatives`
 
 Alternative finding only (Phases 4-8), requires product info from detection.
 
-**Request Body:**
-```json
-{
-  "product_name": "Reese's Peanut Butter Cups",
-  "allergens_to_avoid": ["peanuts", "dairy"],
-  "product_category": "snack"
-}
-```
-
-**Response:**
-```json
-{
-  "alternatives": [
-    {
-      "alternative_name": "SunButter Cups",
-      "company": "SunButter",
-      "purchase_links": ["https://amazon.com/..."],
-      "price": "$6.99 USD",
-      "warning_level": "Safe",
-      "tags": ["peanut-free", "dairy-free"],
-      "reasoning": "Made with sunflower seed butter..."
-    }
-  ]
-}
-```
-
 ### GET `/health`
 
 Health check endpoint for monitoring.
 
-**Response:**
 ```json
 {
   "status": "healthy",
@@ -174,74 +153,71 @@ Health check endpoint for monitoring.
 }
 ```
 
-## 8-Phase Pipeline Architecture
+## 8-Phase Pipeline Detail
 
-**Phases 1-3: Allergen Detection**
-1. **Visual Analysis** - Extract ingredients from product image
-2. **Web Verification** - Search for product information online
-3. **Final Assessment** - Determine severity and allergen presence
+**Phases 1-3: Allergen Detection** (`allergen_detector/`)
+1. **Visual Analysis** — Claude vision reads the packaging image, extracts product name, brand, and any visible ingredient/allergen text. No retrieval.
+2. **Web Verification** — **RAG**: Tavily searches `"{product_name} ingredients allergens"`; results injected into prompt; Claude produces a verified ingredient list with cited sources.
+3. **Final Assessment** — Claude synthesizes phases 1 and 2 into a `severity` (Safe / Caution / Dangerous / NotDetected), `allergens_detected` array, and warning explanation.
 
-**Phases 4-8: Alternative Finding**
-4. **Categorization** - Identify product category and type
-5. **General Search** - Find alternatives in same category
-6. **Brand Search** - Find specific brand alternatives
-7. **Store Search** - Find where to buy alternatives
-8. **Ranking** - Sort and filter best alternatives
+**Phases 4-8: Alternative Finding** (`alternative_finder/`)
+4. **Categorization** — Claude reasons about product category, allergen constraints, and generates search terms for phase 5.
+5. **Find Candidates** — **RAG**: Tavily searches using the LLM-generated terms; Claude proposes 5-10 candidate alternatives.
+6. **Verify Safety** — **RAG**: For the top 3 candidates, Tavily fetches ingredient/allergen info per product; Claude flags any that contain the user's allergens as `Dangerous` (excluded from final).
+7. **Pricing & Availability** — **RAG**: For safe candidates, Tavily fetches price/store info per product.
+8. **Ranking** — Claude produces the final top-5 list with `warning_level`, `tags`, `reasoning`. `purchase_links` are then rewritten server-side to search URLs (never Claude-generated direct product URLs, which frequently 404).
 
 ## Docker Commands
 
 ```bash
-# Build and start in detached mode
-docker-compose up -d
-
-# View logs
-docker-compose logs -f backend
-
-# Stop services
-docker-compose down
-
-# Rebuild after code changes
-docker-compose up --build
-
-# Remove everything (including volumes)
-docker-compose down -v
+docker-compose up -d              # Start in detached mode
+docker-compose logs -f backend    # Tail logs
+docker-compose down               # Stop
+docker-compose up --build         # Rebuild after code changes
+docker-compose down -v            # Remove volumes too
 ```
 
 ## Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `OPENROUTER_API_KEY` | OpenRouter API key for Gemini 2.5 Flash access | Yes |
-| `AWS_ACCESS_KEY_ID` | AWS access key for S3 image storage | Yes |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key for S3 image storage | Yes |
-| `AWS_REGION` | AWS region (e.g., us-east-2) | Yes |
-| `AWS_S3_BUCKET_NAME` | S3 bucket name for image uploads | Yes |
+| `TAVILY_API_KEY` | Tavily API key for RAG web search on phases 2, 5, 6, 7 | Yes |
+| `AWS_ACCESS_KEY_ID` | AWS access key. Used for both S3 (image storage) and Bedrock (LLM calls). | Yes |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key. Same IAM user must have S3 + Bedrock permissions. | Yes |
+| `AWS_REGION` | Must be `us-east-2` (matches Bedrock cross-region profile prefix `us.` and the S3 bucket region). | Yes |
+| `AWS_S3_BUCKET_NAME` | S3 bucket name for product image uploads. | Yes |
+| `PORT` | Optional. Falls back to 8000. On Railway, injected automatically. | No |
+
+**IAM policy required on the AWS user** (managed policy `AmazonBedrockFullAccess` covers Bedrock; add S3 read/write for the bucket separately, or use `AmazonS3FullAccess` in dev):
+- `bedrock:InvokeModel`, `bedrock:InvokeModelWithResponseStream`
+- `s3:GetObject`, `s3:PutObject` on the bucket
 
 ## Project Structure
 
 ```
 backend/
-├── main.py                      # FastAPI application with all endpoints
-├── product_analyzer.py          # Full 8-phase pipeline orchestrator
-├── utils.py                     # Shared utilities and source extraction
-├── requirements.txt             # Python dependencies
-├── Dockerfile                   # Docker image definition
-├── docker-compose.yml          # Docker Compose configuration
-├── .env                        # Environment variables (not in git)
+├── main.py                      # FastAPI app + endpoint handlers
+├── product_analyzer.py          # 8-phase pipeline orchestrator
+├── utils.py                     # tavily_search(), source cleaning helpers
+├── requirements.txt             # Python dependencies (incl. litellm, tavily-python)
+├── Dockerfile                   # Docker image; CMD binds uvicorn to $PORT
+├── docker-compose.yml
+├── railway.json                 # Railway build config (builder=DOCKERFILE)
+├── .env                         # Environment variables (gitignored)
 ├── allergen_detector/
-│   ├── allergen_detector.py    # Phases 1-3: Allergen detection
-│   └── allergen_prompt.md      # AI prompt templates
+│   ├── allergen_detector.py    # Phases 1-3
+│   └── prompt_call*.md          # Per-phase prompt templates
 ├── alternative_finder/
-│   ├── alternative_finder.py   # Phases 4-8: Alternative finding
-│   ├── alternative_prompt.md   # AI prompt templates
-│   └── README.md               # Alternative finder documentation
+│   ├── alternative_finder.py   # Phases 4-8
+│   ├── prompt_call*.md          # Per-phase prompt templates
+│   └── README.md
 └── evaluation/
     ├── run_evaluation.py       # Test runner
-    ├── metrics.py              # Metrics calculation
-    ├── report_generator.py     # Report generation
-    ├── test_cases.json         # Test dataset
-    ├── test_images/            # Test images
-    └── README.md               # Evaluation documentation
+    ├── metrics.py              # Metrics + per-model pricing table
+    ├── report_generator.py
+    ├── test_cases.json
+    ├── test_images/
+    └── README.md
 ```
 
 ## Testing the API
@@ -259,35 +235,14 @@ curl -X POST http://localhost:8000/api/analyze-product \
     "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
     "allergens": ["Milk", "Peanuts"]
   }'
-
-# Allergen detection only
-curl -X POST http://localhost:8000/api/detect-allergens \
-  -H "Content-Type: application/json" \
-  -d '{
-    "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
-    "allergens": ["Milk", "Peanuts"]
-  }'
 ```
 
 ### Using Python
 
 ```python
-import requests
-
-# Full analysis
-response = requests.post(
-    "http://localhost:8000/api/analyze-product",
-    json={
-        "s3_image_url": "https://allersafe.s3.us-east-2.amazonaws.com/uploads/product-123.jpg",
-        "allergens": ["Milk", "Peanuts", "Eggs"]
-    }
-)
-
-print(response.json())
+import requests, sseclient
 
 # Streaming analysis (SSE)
-import sseclient
-
 response = requests.post(
     "http://localhost:8000/api/analyze-product-stream",
     json={
@@ -296,54 +251,44 @@ response = requests.post(
     },
     stream=True
 )
-
-client = sseclient.SSEClient(response)
-for event in client.events():
+for event in sseclient.SSEClient(response).events():
     print(event.data)
 ```
 
 ## Running Evaluation Tests
 
 ```bash
-# Run all evaluation tests
-python -m evaluation.run_evaluation --verbose
-
-# Run specific test
-python -m evaluation.run_evaluation --test-id 001
-
-# Save results to file
+python -m evaluation.run_evaluation --verbose      # all tests
+python -m evaluation.run_evaluation --test-id 001  # one test
 python -m evaluation.run_evaluation --output results.json
 ```
 
-See [evaluation/README.md](./evaluation/README.md) for detailed testing documentation.
+See [evaluation/README.md](./evaluation/README.md) for details on the metrics framework.
 
-## Production Deployment
+## Production Deployment (Railway)
 
-1. **Update CORS settings** in `main.py`:
-   ```python
-   allow_origins=["https://yourdomain.com"]
-   ```
+The backend is deployed on Railway using the Dockerfile builder:
 
-2. **Remove development volumes** from `docker-compose.yml`
-
-3. **Use production-grade secrets management** instead of `.env` files
-
-4. **Set up reverse proxy** (nginx/traefik) for HTTPS
-
-5. **Configure monitoring and logging**
+- **Builder**: Dockerfile (set explicitly in `railway.json`; do not use Nixpacks/Railpack which will fail on the multi-project repo layout).
+- **Root Directory**: `/` (repo root — the Dockerfile reaches into `backend/` via `COPY backend/...`).
+- **Target Port** (Railway → Networking): must match the port uvicorn binds to. Since the Dockerfile CMD uses `${PORT:-8000}` and Railway injects `PORT=8080`, set Target Port to `8080`.
+- **Env vars**: set `TAVILY_API_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME` in the Railway Variables tab.
 
 ## Troubleshooting
 
-**Issue**: Container exits immediately
-- Check logs: `docker-compose logs backend`
-- Verify `.env` file exists and contains all required variables
+**`OpenrouterException: No cookie auth credentials found`** — the running container has the old pre-Bedrock code. Force a fresh deploy so Railway picks up the current commit.
 
-**Issue**: S3 access denied
-- Verify AWS credentials in `.env`
-- Check IAM permissions for S3 bucket access
+**`AccessDeniedException: bedrock:InvokeModel not authorized`** — the IAM user is missing Bedrock permissions. Attach `AmazonBedrockFullAccess` (or a scoped policy with `bedrock:InvokeModel*`).
 
-**Issue**: Port 8000 already in use
-- Change port mapping in `docker-compose.yml`: `"8001:8000"`
+**`Invocation of model ID ... with on-demand throughput isn't supported`** — the model requires a cross-region inference profile. The model ID must start with `us.` (already set in code).
+
+**`The image was specified using the image/jpeg media type, but the image appears to be a image/png image`** — Claude validates the declared MIME against the actual bytes. The backend sniffs magic bytes to pick the right type; if you're uploading an unusual format (HEIC, etc.) it will fall back to `image/jpeg` and fail. Convert to JPEG/PNG/WEBP client-side.
+
+**`Tavily search failed: ModuleNotFoundError: No module named 'tavily'`** — `pip install -r requirements.txt` didn't include `tavily-python`. Rebuild the container.
+
+**502 from Railway on all requests** — port mismatch. Uvicorn is listening on one port, Railway's proxy is routing to another. Match Target Port in the Networking settings to the port shown in `Uvicorn running on http://0.0.0.0:<port>` in the runtime logs.
+
+**Container exits immediately** — check `docker-compose logs backend` (local) or `npx @railway/cli logs` (Railway). Usually a missing env var.
 
 ## License
 
